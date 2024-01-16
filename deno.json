@@ -1,13 +1,13 @@
 {
 	"compilerOptions": {
 		"allowJs": true,
-		"lib": ["deno.window", "dom", "es2023"],
+		"lib": ["deno.window", "dom", "esnext"],
 		"strict": true
 	},
 	"importMap": "import_map.json",
 	"lint": {
-		"include": ["./*.ts"],
-		"exclude": ["./*.d.ts"],
+		"include": ["./*.ts", "./src/*.ts"],
+		"exclude": ["./*.d.ts", "./types/*.d.ts"],
 		"rules": {
 			"tags": ["recommended"],
 			"include": ["ban-untagged-todo"],
@@ -15,8 +15,8 @@
 		}
 	},
 	"fmt": {
-		"include": ["./*.ts"],
-		"exclude": ["./*.d.ts"],
+		"include": ["./*.ts", "./src/*.ts"],
+		"exclude": ["./*.d.ts", "./types/*.d.ts"],
 		"useTabs": true,
 		"lineWidth": 100,
 		"indentWidth": 2,
@@ -24,7 +24,7 @@
 		"proseWrap": "preserve"
 	},
 	"test": {
-		"include": [],
+		"include": ["./test/*.ts"],
 		"exclude": []
 	}
 }
