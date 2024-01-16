@@ -18,7 +18,7 @@
  *
  * <en_us>
  * Created on Tue Jan 09 2024 11:28:16
- * Feature: For codes, documents, etc., translate simplified content (such as comments) into English and traditional Chinese, split files with three natural language contents into corresponding i18n directories, etc.
+ * Function: Provide i18N related functions such as code or Readme.md file.
  * </en_us>
  *
  * <zh_cn>
@@ -28,7 +28,7 @@
  *
  * <zh_tw>
  * 創建：2024年1月9日 11:28:16
- * 功能：
+ * 功能：對代碼或readme.md文件提供i18n相關拆分、合併、翻譯等功能。
  * </zh_tw>
  */
 
@@ -70,43 +70,47 @@ google translate. zh-TW to en
 <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 */
 
-/// <reference lib="deno.ns" />
-
 import { Builder, By, Element, Key, until } from 'npm:selenium-webdriver';
 import * as chrome from 'npm:selenium-webdriver/chrome.js';
 
 const TRANSLATE_MAX_CHAR_COUNT_PER_TIME = 5000;
 
-const FILE_WRITE_MODE = { mode: 0o777 };
-const FILE_WRITE_IF_NOT_EXIST_MODE = { createNew: true, mode: 0o777 };
-
 import {
-	commandLineArgs,
-	exitProcess,
-	I18nable,
-	I18nFlag,
-	I18N_LANG_ARRAY,
-	type I18N_LANG_KIND,
-
-	EN_US_END_TAG,
-	EN_US_START_TAG,
-	ZH_CN_END_TAG,
-	ZH_CN_START_TAG,
-	ZH_TW_END_TAG,
-	ZH_TW_START_TAG,
-
-	START_TAG_LENGTH,
-
-	SPLIT_SEPARATOR,
 	assert,
+	COMMAND_LINE_ARGS,
+	copyFileSync,
+	existsSync,
+	FILE_CREATE_NEW_AND_MODE_ALL,
+	FILE_MODE_ALL,
+	getFilenameTimestampPostfix,
+	HTML_TAG_BEGIN__EN_US,
+	HTML_TAG_BEGIN__ZH_CN,
+	HTML_TAG_BEGIN__ZH_TW,
+	// exitProcess,
+	// I18nable,
+	// I18nFlag,
+	// I18N_LANG_ARRAY,
+	// type I18N_LANG_KIND,
+
+	HTML_TAG_END__EN_US,
+	HTML_TAG_END__ZH_CN,
+	HTML_TAG_END__ZH_TW,
+	I18N_HTML_BEGIN_TAG_LENGTH,
 	joinPath,
+	LF,
+	mkdirSync,
+	readTextFileSync,
+	SEP,
+	SEPARATOR_OF_SPLIT,
+	statSync,
+	writeTextFileSync,
+	// readDirSync,
 
-// } from "../ts_utils/index.ts";
-} from "https://raw.githubusercontent.com/anqisoft/ts_utils/main/index.ts";
+	// } from "../ts_utils/index.ts";
+} from 'https://raw.githubusercontent.com/anqisoft/ts_utils/main/index.ts';
 
-import { showHelpOrVersionOrCallbackAndShowUsedTime }
-// from '../ts_command_line_help/index.ts';
-from 'https://raw.githubusercontent.com/anqisoft/ts_command_line_help/main/index.ts';
+import { showHelpOrVersionOrCallbackAndShowUsedTime } from // from '../ts_command_line_help/index.ts';
+'https://raw.githubusercontent.com/anqisoft/ts_command_line_help/main/index.ts';
 
 const GOOGLE_TRANSLATE_LANG_CN = 'zh-CN';
 const GOOGLE_TRANSLATE_LANG_EN = 'en';
@@ -117,8 +121,8 @@ const CHROME = 'chrome';
 const EN_REPLACE_PATCH_FROM = /<en_us\> ([^\n]+) <\/en_us\>/g;
 const EN_REPLACE_PATCH_TO = '<en_us\>$1</en_us\>';
 
-// .replaceAll(ZH_CN_START_TAG), ZH_TW_START_TAG))
-// .replaceAll(ZH_CN_END_TAG), ZH_TW_END_TAG))
+// .replaceAll(HTML_TAG_BEGIN__ZH_CN), HTML_TAG_BEGIN__ZH_TW))
+// .replaceAll(HTML_TAG_END__ZH_CN), HTML_TAG_END__ZH_TW))
 async function translateByGoogleCore(
 	from: string,
 	langFrom: string,
@@ -161,7 +165,7 @@ async function translateByGoogleCore(
 					? 'en_us'
 					: langFrom.replaceAll('-', '_').toLowerCase()
 			}>`;
-			const END_TAG_LENGTH = END_TAG.length;
+			const I18N_HTML_END_TAG_LENGTH = END_TAG.length;
 
 			do {
 				let next = '';
@@ -175,9 +179,9 @@ async function translateByGoogleCore(
 						.lastIndexOf(END_TAG);
 					if (
 						END_TAG_POS > -1 &&
-						END_TAG_POS + END_TAG_LENGTH <= TRANSLATE_MAX_CHAR_COUNT_PER_TIME
+						END_TAG_POS + I18N_HTML_END_TAG_LENGTH <= TRANSLATE_MAX_CHAR_COUNT_PER_TIME
 					) {
-						next = remaining.substring(0, END_TAG_POS + END_TAG_LENGTH);
+						next = remaining.substring(0, END_TAG_POS + I18N_HTML_END_TAG_LENGTH);
 					} else {
 						// TODO(@anqisoft) 自动断句
 						let ok = false;
@@ -238,16 +242,16 @@ async function translateByGoogleCore(
 }
 
 async function splitCommentCore(sourceFilename: string, commentFilesPath: string) {
-	const fileInfo = Deno.statSync(sourceFilename);
+	const fileInfo = statSync(sourceFilename);
 	assert(fileInfo.isFile);
 
-	Deno.mkdirSync(commentFilesPath, { recursive: true });
-	assert(Deno.statSync(commentFilesPath).isDirectory);
+	mkdirSync(commentFilesPath, { recursive: true });
+	assert(statSync(commentFilesPath).isDirectory);
 
-	const SOURCE_CONTENT = Deno.readTextFileSync(sourceFilename);
+	const SOURCE_CONTENT = readTextFileSync(sourceFilename);
 	// ...<en_us>...</en_us>...<zh_cn>...</zh_cn>...<zh_tw>...</zh_tw>...
 
-	const SPLIT_LEVEL_ONE = SOURCE_CONTENT.split(EN_US_START_TAG);
+	const SPLIT_LEVEL_ONE = SOURCE_CONTENT.split(HTML_TAG_BEGIN__EN_US);
 	// remove the first one.
 	SPLIT_LEVEL_ONE.shift();
 
@@ -273,8 +277,14 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 		assert(ZH_TW_END_POS > ZH_TW_START_POS, `${index}: ZH_TW_END_POS not right.\n${seg}`);
 
 		const EN_US_COMMENT = seg.substring(0, EN_US_END_POS);
-		const ZH_CN_COMMENT = seg.substring(ZH_CN_START_POS + START_TAG_LENGTH, ZH_CN_END_POS);
-		const ZH_TW_COMMENT = seg.substring(ZH_TW_START_POS + START_TAG_LENGTH, ZH_TW_END_POS);
+		const ZH_CN_COMMENT = seg.substring(
+			ZH_CN_START_POS + I18N_HTML_BEGIN_TAG_LENGTH,
+			ZH_CN_END_POS,
+		);
+		const ZH_TW_COMMENT = seg.substring(
+			ZH_TW_START_POS + I18N_HTML_BEGIN_TAG_LENGTH,
+			ZH_TW_END_POS,
+		);
 
 		US_COMMENTS.push(`<en_us>${EN_US_COMMENT}</en_us>`);
 		CN_COMMENTS.push(`<zh_cn>${ZH_CN_COMMENT}</zh_cn>`);
@@ -286,14 +296,14 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 		sourceFilename.split(SEP).pop() as string,
 		SEP,
 	);
-	Deno.mkdirSync(GOAL_PATH, { recursive: true });
+	mkdirSync(GOAL_PATH, { recursive: true });
 
 	const CN_BEFORE_TRANSLATE = CN_COMMENTS.join(LF);
-	const EN_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE; // .replaceAll(ZH_CN_START_TAG, EN_US_START_TAG)
-	// .replaceAll(ZH_CN_END_TAG), EN_US_END_TAG))
+	const EN_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE; // .replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__EN_US)
+	// .replaceAll(HTML_TAG_END__ZH_CN), HTML_TAG_END__EN_US))
 	const TW_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE
-		.replaceAll(ZH_CN_START_TAG, ZH_TW_START_TAG)
-		.replaceAll(ZH_CN_END_TAG, ZH_TW_END_TAG);
+		.replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW)
+		.replaceAll(HTML_TAG_END__ZH_CN, HTML_TAG_END__ZH_TW);
 
 	const DATA = [
 		['en_us', US_COMMENTS],
@@ -306,23 +316,23 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 		// DATA.forEach((langAndData, index) => {
 		const LANG = langAndData[0] as string;
 		const FILE_CONTENT = (langAndData[1] as string[]).join(LF);
-		Deno.writeTextFileSync(
+		writeTextFileSync(
 			joinPath(GOAL_PATH, `${LANG}.original.txt`),
 			FILE_CONTENT,
-			FILE_WRITE_MODE,
+			FILE_MODE_ALL,
 		);
 
 		const OTHER_FILENAME = joinPath(GOAL_PATH, `${LANG}.txt`);
 		if (!existsSync(OTHER_FILENAME)) {
 			switch (index) {
 				case 0:
-					// Deno.writeTextFileSync(
+					// writeTextFileSync(
 					// 	OTHER_FILENAME,
 					// 	EN_BEFORE_TRANSLATE,
-					// 	FILE_WRITE_IF_NOT_EXIST_MODE,
+					// 	FILE_CREATE_NEW_AND_MODE_ALL,
 					// );
 					// console.log(EN_BEFORE_TRANSLATE);
-					Deno.writeTextFileSync(
+					writeTextFileSync(
 						OTHER_FILENAME,
 						(await translateByGoogleCore(
 							EN_BEFORE_TRANSLATE,
@@ -330,48 +340,48 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 							GOOGLE_TRANSLATE_LANG_EN,
 						))
 							.replaceAll(
-								ZH_CN_START_TAG,
-								EN_US_START_TAG,
+								HTML_TAG_BEGIN__ZH_CN,
+								HTML_TAG_BEGIN__EN_US,
 							)
 							.replaceAll(
-								ZH_CN_END_TAG,
-								EN_US_END_TAG,
+								HTML_TAG_END__ZH_CN,
+								HTML_TAG_END__EN_US,
 							)
 							.replace(
 								EN_REPLACE_PATCH_FROM,
 								EN_REPLACE_PATCH_TO,
 							),
-						FILE_WRITE_IF_NOT_EXIST_MODE,
+						FILE_CREATE_NEW_AND_MODE_ALL,
 					);
 					break;
 				case 1:
-					Deno.writeTextFileSync(
+					writeTextFileSync(
 						OTHER_FILENAME,
 						FILE_CONTENT,
-						FILE_WRITE_IF_NOT_EXIST_MODE,
+						FILE_CREATE_NEW_AND_MODE_ALL,
 					);
 					break;
 				case 2:
-					// Deno.writeTextFileSync(
+					// writeTextFileSync(
 					// 	OTHER_FILENAME,
 					// 	cn2tw(CN_COMMENTS.join(LF)),
-					// 	FILE_WRITE_IF_NOT_EXIST_MODE,
+					// 	FILE_CREATE_NEW_AND_MODE_ALL,
 					// );
 
-					// Deno.writeTextFileSync(
+					// writeTextFileSync(
 					// 	OTHER_FILENAME,
 					// 	TW_BEFORE_TRANSLATE,
-					// 	FILE_WRITE_IF_NOT_EXIST_MODE,
+					// 	FILE_CREATE_NEW_AND_MODE_ALL,
 					// );
 
-					Deno.writeTextFileSync(
+					writeTextFileSync(
 						OTHER_FILENAME,
 						await translateByGoogleCore(
 							TW_BEFORE_TRANSLATE,
 							GOOGLE_TRANSLATE_LANG_CN,
 							GOOGLE_TRANSLATE_LANG_TW,
 						),
-						FILE_WRITE_IF_NOT_EXIST_MODE,
+						FILE_CREATE_NEW_AND_MODE_ALL,
 					);
 					break;
 				default:
@@ -387,7 +397,7 @@ export async function splitComments(
 	commentFilesPath: string,
 ): Promise<boolean> {
 	try {
-		splitCommentCore(sourceFilename, commentFilesPath);
+		await splitCommentCore(sourceFilename, commentFilesPath);
 		return true;
 	} catch (e) {
 		console.error(e);
@@ -396,12 +406,12 @@ export async function splitComments(
 }
 
 function getSplitResultFromGoalFileByLang(dir: string, lang: string): string[] {
-	const ARRAY = Deno.readTextFileSync(joinPath(dir, `${lang}.txt`))
-		.substring(START_TAG_LENGTH).replace(
+	const ARRAY = readTextFileSync(joinPath(dir, `${lang}.txt`))
+		.substring(I18N_HTML_BEGIN_TAG_LENGTH).replace(
 			new RegExp(`</${lang}>[\r\n]+<${lang}>`, 'g'),
-			SPLIT_SEPARATOR,
+			SEPARATOR_OF_SPLIT,
 		)
-		.split(SPLIT_SEPARATOR);
+		.split(SEPARATOR_OF_SPLIT);
 
 	const MAX_INDEX = ARRAY.length - 1;
 	ARRAY[MAX_INDEX] = ARRAY[MAX_INDEX].replace(`</${lang}>`, '');
@@ -410,15 +420,15 @@ function getSplitResultFromGoalFileByLang(dir: string, lang: string): string[] {
 
 export function joinComments(sourceFilename: string, commentFilesPath: string): boolean {
 	try {
-		const fileInfo = Deno.statSync(sourceFilename);
+		const fileInfo = statSync(sourceFilename);
 		assert(fileInfo.isFile);
 
-		assert(Deno.statSync(commentFilesPath).isDirectory);
+		assert(statSync(commentFilesPath).isDirectory);
 
-		const SOURCE_CONTENT = Deno.readTextFileSync(sourceFilename);
+		const SOURCE_CONTENT = readTextFileSync(sourceFilename);
 		const BAK_FILENAME = sourceFilename.concat(getFilenameTimestampPostfix(), '.bak');
 		if (!existsSync(BAK_FILENAME)) {
-			Deno.writeTextFileSync(BAK_FILENAME, SOURCE_CONTENT);
+			writeTextFileSync(BAK_FILENAME, SOURCE_CONTENT);
 		}
 
 		const GOAL_PATH = joinPath(
@@ -432,9 +442,9 @@ export function joinComments(sourceFilename: string, commentFilesPath: string): 
 
 		const CODES_ARRAY = SOURCE_CONTENT.replace(
 			/((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g,
-			SPLIT_SEPARATOR,
+			SEPARATOR_OF_SPLIT,
 		)
-			.split(SPLIT_SEPARATOR);
+			.split(SEPARATOR_OF_SPLIT);
 
 		const COUNT = US_COMMENTS.length;
 		console.log(CN_COMMENTS.length, TW_COMMENTS.length, COUNT);
@@ -476,7 +486,7 @@ export function joinComments(sourceFilename: string, commentFilesPath: string): 
 			'\n',
 		);
 
-		Deno.writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
+		writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
 		return true;
 	} catch (e) {
 		console.error(e);
@@ -485,33 +495,16 @@ export function joinComments(sourceFilename: string, commentFilesPath: string): 
 }
 
 async function cn2trilingualCore(sourceFilename: string) {
-	// 	<en_us>en_us</en_us>
-	// 	<zh_cn>失败的尝试：以通配符获得文件清单并遍历处理</zh_cn>
-	// 	<zh_tw>zh_tw</zh_tw>
-	// {
-	// 	// 	<en_us>en_us</en_us>
-	// 	// 	<zh_cn>如果包含“?”或“*”这样的通配符，则遍历相关文件（不考虑子文件夹、快捷方式，仅处理当前文件夹下相关内容）</zh_cn>
-	// 	// 	<zh_tw>zh_tw</zh_tw>
-	// 	if (sourceFilename.indexOf('?')  > -1 || sourceFilename.indexOf('*') > -1) {
-	// 		for await (const dirEntry of Deno.readDirSync(sourceFilename)) {
-	// 			if (dirEntry.isFile) {
-	// 				await cn2trilingualCore(dirEntry.name);
-	// 			}
-	// 		  }
-	// 		return;
-	// 	}
-	// }
-
 	const SEG_COUNT_PER_ITEM = 6;
 
 	// console.log('sourceFilename', sourceFilename);
-	const fileInfo = Deno.statSync(sourceFilename);
+	const fileInfo = statSync(sourceFilename);
 	assert(fileInfo.isFile);
 
-	const SOURCE_CONTENT = Deno.readTextFileSync(sourceFilename);
+	const SOURCE_CONTENT = readTextFileSync(sourceFilename);
 	const BAK_FILENAME = sourceFilename.concat(getFilenameTimestampPostfix(), '.bak');
 	if (!existsSync(BAK_FILENAME)) {
-		Deno.writeTextFileSync(BAK_FILENAME, SOURCE_CONTENT);
+		writeTextFileSync(BAK_FILENAME, SOURCE_CONTENT);
 	}
 
 	const US_COMMENTS: string[] = [];
@@ -519,8 +512,8 @@ async function cn2trilingualCore(sourceFilename: string) {
 	const TW_COMMENTS: string[] = [];
 
 	const CODES_ARRAY = SOURCE_CONTENT
-		.replace(/((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g, SPLIT_SEPARATOR)
-		.split(SPLIT_SEPARATOR);
+		.replace(/((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g, SEPARATOR_OF_SPLIT)
+		.split(SEPARATOR_OF_SPLIT);
 	const LAST_ITEM_START_INDEX = CODES_ARRAY.length - SEG_COUNT_PER_ITEM;
 	for (let i = 0; i < LAST_ITEM_START_INDEX; i += SEG_COUNT_PER_ITEM) {
 		// US_COMMENTS.push(`<en_us>${CODES_ARRAY[i + 1]}</en_us>`);
@@ -532,11 +525,11 @@ async function cn2trilingualCore(sourceFilename: string) {
 	const CN_BEFORE_TRANSLATE = CN_COMMENTS.join(LF);
 	// console.log('CN_BEFORE_TRANSLATE.length', CN_BEFORE_TRANSLATE.length);
 	// console.log('CN_BEFORE_TRANSLATE', CN_BEFORE_TRANSLATE);
-	const EN_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE; // .replaceAll(ZH_CN_START_TAG, EN_US_START_TAG)
-	// .replaceAll(ZH_CN_END_TAG), EN_US_END_TAG))
+	const EN_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE; // .replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__EN_US)
+	// .replaceAll(HTML_TAG_END__ZH_CN), HTML_TAG_END__EN_US))
 	const TW_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE
-		.replaceAll(ZH_CN_START_TAG, ZH_TW_START_TAG)
-		.replaceAll(ZH_CN_END_TAG, ZH_TW_END_TAG);
+		.replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW)
+		.replaceAll(HTML_TAG_END__ZH_CN, HTML_TAG_END__ZH_TW);
 
 	US_COMMENTS.length = 0;
 	// CN_COMMENTS.length = 0;
@@ -547,19 +540,19 @@ async function cn2trilingualCore(sourceFilename: string) {
 		GOOGLE_TRANSLATE_LANG_CN,
 		GOOGLE_TRANSLATE_LANG_EN,
 	)).replaceAll(
-		ZH_CN_START_TAG,
-		EN_US_START_TAG,
+		HTML_TAG_BEGIN__ZH_CN,
+		HTML_TAG_BEGIN__EN_US,
 	)
 		.replaceAll(
-			ZH_CN_END_TAG,
-			EN_US_END_TAG,
+			HTML_TAG_END__ZH_CN,
+			HTML_TAG_END__EN_US,
 		)
 		.replace(EN_REPLACE_PATCH_FROM, EN_REPLACE_PATCH_TO);
 
 	EN_FULL_CONTENT
-		.substring(START_TAG_LENGTH, EN_FULL_CONTENT.length - START_TAG_LENGTH - 1)
-		.replace(/<\/en_us>\n<en_us>/g, SPLIT_SEPARATOR)
-		.split(SPLIT_SEPARATOR).forEach((item) => US_COMMENTS.push(item));
+		.substring(I18N_HTML_BEGIN_TAG_LENGTH, EN_FULL_CONTENT.length - I18N_HTML_BEGIN_TAG_LENGTH - 1)
+		.replace(/<\/en_us>\n<en_us>/g, SEPARATOR_OF_SPLIT)
+		.split(SEPARATOR_OF_SPLIT).forEach((item) => US_COMMENTS.push(item));
 	// console.log('EN_FULL_CONTENT', EN_FULL_CONTENT);
 
 	const TW_FULL_CONTENT = await translateByGoogleCore(
@@ -569,9 +562,9 @@ async function cn2trilingualCore(sourceFilename: string) {
 	);
 	// console.log('TW_FULL_CONTENT', TW_FULL_CONTENT);
 	TW_FULL_CONTENT
-		.substring(START_TAG_LENGTH, TW_FULL_CONTENT.length - START_TAG_LENGTH - 1)
-		.replace(/<\/zh_tw>\n<zh_tw>/g, SPLIT_SEPARATOR)
-		.split(SPLIT_SEPARATOR).forEach((item) => TW_COMMENTS.push(item));
+		.substring(I18N_HTML_BEGIN_TAG_LENGTH, TW_FULL_CONTENT.length - I18N_HTML_BEGIN_TAG_LENGTH - 1)
+		.replace(/<\/zh_tw>\n<zh_tw>/g, SEPARATOR_OF_SPLIT)
+		.split(SEPARATOR_OF_SPLIT).forEach((item) => TW_COMMENTS.push(item));
 
 	// console.log('US_COMMENTS.length', US_COMMENTS.length);
 	// console.log('TW_COMMENTS.length', TW_COMMENTS.length);
@@ -584,7 +577,7 @@ async function cn2trilingualCore(sourceFilename: string) {
 		CODES_ARRAY[OFFSET + 5] = `<zh_tw>${TW_COMMENTS[i]}</zh_tw>`;
 	}
 
-	Deno.writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
+	writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
 }
 
 export async function cn2trilingual(sourceFilenames: string[]): Promise<boolean> {
@@ -662,7 +655,7 @@ function keepByLang(source: string, lang: string, keepLangTag: boolean): string 
 		result = removeLangSeg(result, removeLang);
 	});
 
-	if(!keepLangTag) {
+	if (!keepLangTag) {
 		result = result.replace(new RegExp(`(<|</)${lang}>`, 'g'), '');
 	}
 
@@ -674,7 +667,7 @@ export function splitReadmeFiles(keepLangTag: boolean, sourceFilenames: string[]
 	for (let i = 0; i < COUNT; ++i) {
 		const SOURCE_FILENAME = sourceFilenames[i];
 		try {
-			const SOURCE_CONTENT = Deno.readTextFileSync(SOURCE_FILENAME);
+			const SOURCE_CONTENT = readTextFileSync(SOURCE_FILENAME);
 
 			// console.log('SOURCE_CONTENT', SOURCE_CONTENT);
 			// console.log('en_us', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw'));
@@ -686,12 +679,12 @@ export function splitReadmeFiles(keepLangTag: boolean, sourceFilenames: string[]
 				SOURCE_FILENAME.toLowerCase().lastIndexOf('readme.md'),
 			);
 
-			// Deno.writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.en_us.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw'));
-			// Deno.writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_cn.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw'));
-			// Deno.writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_tw.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn'));
+			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.en_us.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw'));
+			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_cn.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw'));
+			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_tw.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn'));
 
 			['en_us', 'zh_cn', 'zh_tw'].forEach((lang) => {
-				Deno.writeTextFileSync(
+				writeTextFileSync(
 					GOAL_FILENAME_PREFIX.concat(`README.${lang}.md`),
 					keepByLang(SOURCE_CONTENT, lang, keepLangTag),
 				);
@@ -717,6 +710,19 @@ export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boo
 				'i18n',
 			);
 
+			const splitFile = () => {
+				const SOURCE_CONTENT = readTextFileSync(SOURCE_FILENAME);
+				[
+					['en_us', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw')],
+					['zh_cn', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw')],
+					['zh_tw', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn')],
+				].forEach(([lang, content]) => {
+					const PATH = joinPath(GOAL_PATH, lang);
+					mkdirSync(PATH, { recursive: true });
+					writeTextFileSync(joinPath(PATH, FILENAME), content);
+				});
+			};
+
 			switch (FILENAME.split('.').pop()?.toLowerCase()) {
 				case 'md':
 				case 'xml':
@@ -740,22 +746,13 @@ export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boo
 				case 'ps1':
 				case 'js':
 				case 'ts':
-					const SOURCE_CONTENT = Deno.readTextFileSync(SOURCE_FILENAME);
-					[
-						['en_us', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw')],
-						['zh_cn', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw')],
-						['zh_tw', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn')],
-					].forEach(([lang, content]) => {
-						const PATH = joinPath(GOAL_PATH, lang);
-						Deno.mkdirSync(PATH, { recursive: true });
-						Deno.writeTextFileSync(joinPath(PATH, FILENAME), content);
-					});
+					splitFile();
 					break;
 				default:
 					['en_us', 'zh_cn', 'zh_tw'].forEach((lang) => {
 						const PATH = joinPath(GOAL_PATH, lang);
-						Deno.mkdirSync(PATH, { recursive: true });
-						Deno.copyFileSync(SOURCE_FILENAME, joinPath(PATH, FILENAME));
+						mkdirSync(PATH, { recursive: true });
+						copyFileSync(SOURCE_FILENAME, joinPath(PATH, FILENAME));
 					});
 					break;
 			}
@@ -767,46 +764,18 @@ export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boo
 	return true;
 }
 
-// (async () => {
-// 	const START_DATE = new Date();
-// 	const [command, source, ...others] = Deno.args;
-// 	switch (command) {
-// 		case 'splitComments':
-// 			console.log(await splitComments(source, others[0]));
-// 			break;
-// 		case 'joinComments':
-// 			console.log(joinComments(source, others[0]));
-// 			break;
-// 		case 'cn2trilingual':
-// 			console.log(await cn2trilingual([source, ...others]));
-// 			break;
-// 		case 'splitReadmeFiles':
-// 			console.log(splitReadmeFiles(source === 'true', [...others]));
-// 			break;
-// 		case 'splitFiles':
-// 			console.log(splitFiles(source === 'true', [...others]));
-// 			break;
-// 		default:
-// 			break;
-// 	}
-// 	const END_DATE = new Date();
-// 	const USED_MILLISECONDS: number = END_DATE.getTime() - START_DATE.getTime();
-// 	console.log(
-// 		'Used',
-// 		USED_MILLISECONDS,
-// 		'milliseconds, it is equivalent to ',
-// 		parseFloat((USED_MILLISECONDS / 1000).toFixed(4)),
-// 		'seconds.',
-// 	);
-// })();
-
 // console.log('before showHelpOrVersionOrCallbackAndShowUsedTime()');
 showHelpOrVersionOrCallbackAndShowUsedTime(
-	'test',
-'0.0.1',
-2,
-async () => {
-		const [command, source, ...others] = commandLineArgs;
+	{
+		en_us:
+			'This tool is used to assist in internationalization operations of code or README.md and other files, such as splitting, merging, and translating.',
+		zh_cn: '本工具用于辅助代码或README.md等文件的国际化操作，如拆分、合并、翻译等。',
+		zh_tw: '本工具用於輔助程式碼或README.md等檔案的國際化操作，如分割、合併、翻譯等。',
+	},
+	'0.0.1',
+	2,
+	async () => {
+		const [command, source, ...others] = COMMAND_LINE_ARGS;
 		// console.log('call me', command, source);
 		switch (command) {
 			case 'splitComments':
@@ -827,7 +796,6 @@ async () => {
 			default:
 				break;
 		}
-},
-
+	},
 );
 // console.log('after showHelpOrVersionOrCallbackAndShowUsedTime()');

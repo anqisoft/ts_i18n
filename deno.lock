@@ -264,13 +264,7 @@
     "https://deno.land/std@0.211.0/fs/exists.ts": "d2757ef764eaf5c6c5af7228e8447db2de42ab084a2dae540097f905723d83f5",
     "https://deno.land/std@0.211.0/path/_os.ts": "8fb9b90fb6b753bd8c77cfd8a33c2ff6c5f5bc185f50de8ca4ac6a05710b2c15",
     "https://deno.land/std@0.211.0/path/separator.ts": "2b5a590d4f1942e70650ee7421d161c24ec7d3b94b49981e4138ae07397fb2d2",
-    "https://raw.githubusercontent.com/anqisoft/ts_command_line_help/main/index.ts": "ec92edb326efd0060b9cc5c6d09b237b1dc6472b22b7a73b0f797210aad69967",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/args.ts": "1b2d919b53f3127bbe67c8add46e0a1d1b8d0c558dc5bec350669372ff29c021",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/chars.ts": "3029adba584c10ae545649c6b777657cbad53fb297c12332dbd9434abe493572",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/date.ts": "c97d78f6f0d25d7d31664c9fa56afd016587d43d29e50d3495ca1498bccd6a30",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/fs.ts": "7551c7beaa2356554e83898f707039e982c5092ad2f28ec57de715ad03552a87",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/i18n.ts": "d7b319972a166408afe5d5831d3ec99bc554a2276937c0f1ab601e0a7304f723",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/index.ts": "c6848e8f11279da3da6088c27c3b3e0820f397d7d80b36dab405782e9c8e0142",
-    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/process.ts": "986b939a20c5a605648799493cb1e249ac1458bc86f71465cc35b2835a5f3fb5"
+    "https://raw.githubusercontent.com/anqisoft/ts_command_line_help/main/index.ts": "fddd3acd051581ff0a2036f26887e92bcef10df7035558b30794b1f4e803d756",
+    "https://raw.githubusercontent.com/anqisoft/ts_utils/main/index.ts": "d80e49dff7cfcfeb847eafee049dacd5dea25cea5948ecec44c366fbbc3748c4"
   }
 }
