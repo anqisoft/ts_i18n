@@ -1,23 +1,9 @@
 /*
  * Copyright (c) 2024 anqisoft@gmail.com
- * ts_tools_i18n.ts
- * Technology: deno, typescript.
- * i18n: ...<en_us>...</en_us>...<zh_cn>...</zh_cn>...<zh_tw>...</zh_tw>...
- *
- * Functions:
- *   splitComments(sourceFilename: string, commentFilesPath: string): boolean
- *   joinComments(sourceFilename: string, commentFilesPath: string): boolean
- *   splitReadmeFiles(sourceFilenames: string[]): boolean
- *   splitFiles(sourcePaths: string[]): boolean
- *
- * Usage:
- *   deno run --allow-read --allow-write ts_tools_i18n.ts splitComments ~sourceFilename~ ~commentFilesPath~
- *   deno run --allow-read --allow-write ts_tools_i18n.ts joinComments ~sourceFilename~ ~commentFilesPath~
- *   deno run --allow-read --allow-write ts_tools_i18n.ts splitReadmeFiles ~sourceFilename1~[ ~sourceFilename2~ [...]]
- *   deno run --allow-read --allow-write ts_tools_i18n.ts splitFiles ~sourcePath1~[ ~sourcePath2~ [...]]
+ * ts_i18n/index.ts
  *
  * <en_us>
- * Created on Tue Jan 09 2024 11:28:16
+ * Creation: January 9, 2024 11:28:16
  * Function: Provide i18N related functions such as code or Readme.md file.
  * </en_us>
  *
@@ -32,49 +18,6 @@
  * </zh_tw>
  */
 
-/* references:
-https://github.com/luhuiguo/chinese-utils/
-https://github.com/NLPchina/nlp-lang
-
-https://github.com/uutool/hanzi-convert/
-https://github.com/liuyueyi/quick-chinese-transfer
-https://github.com/willonboy/ChineseToPinYin
-
-https://github.com/luhuiguo/chinese-utils/blob/master/src/main/resources/simplified.txt
-
-https://www.npmjs.com/package/hanzi-tools 1.2.26 • Public • Published 2 years ago
-《汉字工具》是四种工具的集合。 Hanzi Tools is a collection of four different tools.
-segment - 分词。 Divide text into words.
-pinyinify - 转换汉字为拼音。 Convert Chinese characters to pinyin.
-simplify - 转换简体汉字为繁体汉字。 Convert traditional characters to simplified characters.
-traditionalize - 转换繁体汉字为简体汉字。 Convert simplified characters to traditional characters.
-tag - 词性标注。 Part-of-speech tagging.
-
-https://www.cnblogs.com/livelab/p/14111142.html
-
-https://github.com/YuChunTsao/Translate
-google translate. zh-TW to en
-<script>
-    function googleTranslateElementInit() {
-        new google.translate.TranslateElement({
-            pageLanguage: GOOGLE_TRANSLATE_LANG_EN,
-            includedLanguages: GOOGLE_TRANSLATE_LANG_TW,
-            autoDisplay: false
-        }, 'google_translate_element');
-        var a = document.querySelector("#google_translate_element select");
-        a.selectedIndex=1;
-        a.dispatchEvent(new Event('change'));
-    }
-</script>
-
-<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-*/
-
-import { Builder, By, Element, Key, until } from 'npm:selenium-webdriver';
-import * as chrome from 'npm:selenium-webdriver/chrome.js';
-
-const TRANSLATE_MAX_CHAR_COUNT_PER_TIME = 5000;
-
 import {
 	assert,
 	COMMAND_LINE_ARGS,
@@ -86,16 +29,17 @@ import {
 	HTML_TAG_BEGIN__EN_US,
 	HTML_TAG_BEGIN__ZH_CN,
 	HTML_TAG_BEGIN__ZH_TW,
-	// exitProcess,
-	// I18nable,
-	// I18nFlag,
-	// I18N_LANG_ARRAY,
 	// type I18N_LANG_KIND,
 
 	HTML_TAG_END__EN_US,
 	HTML_TAG_END__ZH_CN,
 	HTML_TAG_END__ZH_TW,
 	I18N_HTML_BEGIN_TAG_LENGTH,
+	// exitProcess,
+	// I18nable,
+	// I18nFlag,
+	I18N_LANG_ARRAY,
+	I18N_LANG_NAME,
 	joinPath,
 	LF,
 	mkdirSync,
@@ -105,143 +49,91 @@ import {
 	statSync,
 	writeTextFileSync,
 	// readDirSync,
-
-	// } from "../ts_utils/index.ts";
 } from 'https://raw.githubusercontent.com/anqisoft/ts_utils/main/index.ts';
 
-import { showHelpOrVersionOrCallbackAndShowUsedTime } from // from '../ts_command_line_help/index.ts';
+import { showHelpOrVersionOrCallbackAndShowUsedTime } from // '../ts_command_line_help/index.ts';
 'https://raw.githubusercontent.com/anqisoft/ts_command_line_help/main/index.ts';
 
-const GOOGLE_TRANSLATE_LANG_CN = 'zh-CN';
-const GOOGLE_TRANSLATE_LANG_EN = 'en';
-const GOOGLE_TRANSLATE_LANG_TW = 'zh-TW';
+import {
+	BrowserName,
+	type BrowserNameAndDriverMap,
+	type BrowserNameAndDriverPair,
+	doubleClick,
+	findElementByCss,
+	getHeadlessChromeDriver,
+	navigateTo,
+	SeleniumHelper,
+	sendKeysAndReturn,
+	waitUtilElementLocatedByCss,
+	waitUtilElementLocatedByCssAndGetText,
+	// Builder, By, WebElement, Key, until,
+	WebDriver,
+	// } from './selenium.ts';
+} from 'https://raw.githubusercontent.com/anqisoft/ts_selenium/main/index.ts';
 
-const CHROME = 'chrome';
+import {
+	GOOGLE_TRANSLATE_LANG_CN,
+	GOOGLE_TRANSLATE_LANG_EN,
+	GOOGLE_TRANSLATE_LANG_TW,
+	translateByGoogle,
+	// } from './translate_by_google.ts';
+} from 'https://raw.githubusercontent.com/anqisoft/ts_translate_by_google/main/index.ts';
 
-const EN_REPLACE_PATCH_FROM = /<en_us\> ([^\n]+) <\/en_us\>/g;
-const EN_REPLACE_PATCH_TO = '<en_us\>$1</en_us\>';
+/**
+ * <en_us>regular expression: content to be replaced when modifying the results of the simplified translation</en_us>
+ * <zh_cn>正则表达式：修正简译英结果时所要替换的内容</zh_cn>
+ * <zh_tw>正則表達式：修正簡譯英結果時所要替換的內容</zh_tw>
+ */
+const EN_US_PATCH_REPLACE_FROM = new RegExp(
+	HTML_TAG_BEGIN__EN_US.concat(' ([^\n]+) ', HTML_TAG_END__EN_US),
+	'g',
+);
 
-// .replaceAll(HTML_TAG_BEGIN__ZH_CN), HTML_TAG_BEGIN__ZH_TW))
-// .replaceAll(HTML_TAG_END__ZH_CN), HTML_TAG_END__ZH_TW))
-async function translateByGoogleCore(
-	from: string,
-	langFrom: string,
-	langTo: string,
-): Promise<string> {
-	const URL = `https://translate.google.com/details?sl=${langFrom}&tl=${langTo}`;
-	const FROM_CSS = '.er8xn';
-	const TO_CSS = '.lRu31';
+/**
+ * <en_us>The string to be replaced when the results of the simplified translation of the British</en_us>
+ * <zh_cn>修正简译英结果时所要替换到的字符串</zh_cn>
+ * <zh_tw>修正簡譯英結果時所要替換到的字符串</zh_tw>
+ */
+const EN_US_PATCH_REPLACE_TO = `${HTML_TAG_BEGIN__EN_US}\$1${HTML_TAG_END__EN_US}`;
 
-	const START_TIME = new Date();
+/**
+ * <en_us>regular expression: content to be replaced when modifying the simplified translation results</en_us>
+ * <zh_cn>正则表达式：修正简译繁结果时所要替换的内容</zh_cn>
+ * <zh_tw>正則表達式：修正簡譯繁結果時所要替換的內容</zh_tw>
+ */
+const ZH_TW_PATCH_REPLACE_FROM = new RegExp(
+	HTML_TAG_BEGIN__ZH_TW.concat(' ([^\n]+) ', HTML_TAG_END__ZH_TW),
+	'g',
+);
 
-	const driver = await new Builder()
-		.forBrowser(CHROME)
-		.setChromeOptions(new chrome.Options().headless())
-		.build();
-	try {
-		await driver.get(URL);
+/**
+ * <en_us>The string to be replaced when the simplified translation result</en_us>
+ * <zh_cn>修正简译繁结果时所要替换到的字符串</zh_cn>
+ * <zh_tw>修正簡譯繁結果時所要替換到的字符串</zh_tw>
+ */
+const ZH_TW_PATCH_REPLACE_TO = `${HTML_TAG_BEGIN__ZH_TW}\$1${HTML_TAG_END__ZH_TW}`;
 
-		// const elementFrom = await driver.findElement(By.css(FROM_CSS));
-		let elementFrom = await driver.findElement(By.css(FROM_CSS));
+/**
+ * <en_us>regular expression: all I18N language HTML starts and end the label</en_us>
+ * <zh_cn>正则表达式：所有i18n语言html开始与结束标签</zh_cn>
+ * <zh_tw>正則表達式：所有i18n語言html開始與結束標籤</zh_tw>
+ */
+const HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN = /((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g;
 
-		// 超过指定字符数则分次翻译
-		const FROM_LENGTH = from.length;
-		// console.log(FROM_LENGTH, TRANSLATE_MAX_CHAR_COUNT_PER_TIME);
-		if (FROM_LENGTH <= TRANSLATE_MAX_CHAR_COUNT_PER_TIME) {
-			await driver.actions({ bridge: true }).doubleClick(elementFrom).perform();
-			await elementFrom.sendKeys(from, Key.RETURN);
-
-			await driver.wait(until.elementLocated(By.css(TO_CSS)), 40000);
-
-			const element = await driver.findElement(By.css(TO_CSS));
-			const result = await element.getText();
-			return result;
-		} else {
-			const RESULTS: string[] = [];
-			let remaining = from;
-			let remainingLength = FROM_LENGTH;
-			const END_TAG = `</${
-				langFrom === GOOGLE_TRANSLATE_LANG_EN
-					? 'en_us'
-					: langFrom.replaceAll('-', '_').toLowerCase()
-			}>`;
-			const I18N_HTML_END_TAG_LENGTH = END_TAG.length;
-
-			do {
-				let next = '';
-
-				if (remainingLength <= TRANSLATE_MAX_CHAR_COUNT_PER_TIME) {
-					// await elementFrom.sendKeys(remaining, Key.RETURN);
-					// remaining = '';
-					next = remaining;
-				} else {
-					const END_TAG_POS = remaining.substring(0, TRANSLATE_MAX_CHAR_COUNT_PER_TIME)
-						.lastIndexOf(END_TAG);
-					if (
-						END_TAG_POS > -1 &&
-						END_TAG_POS + I18N_HTML_END_TAG_LENGTH <= TRANSLATE_MAX_CHAR_COUNT_PER_TIME
-					) {
-						next = remaining.substring(0, END_TAG_POS + I18N_HTML_END_TAG_LENGTH);
-					} else {
-						// TODO(@anqisoft) 自动断句
-						let ok = false;
-						(langFrom === GOOGLE_TRANSLATE_LANG_EN ? '\n.?! ' : '\n。？！ ').split('').forEach(
-							(seg) => {
-								if (ok) return;
-
-								const POS = remaining.indexOf(seg);
-								if (POS > 0) {
-									next = remaining.substring(0, POS);
-									ok = true;
-								}
-							},
-						);
-
-						if (!ok) {
-							next = remaining.substring(0, TRANSLATE_MAX_CHAR_COUNT_PER_TIME);
-						}
-					}
-				}
-
-				await driver.actions({ bridge: true }).doubleClick(elementFrom).perform();
-				// elementFrom.setText('');
-				await elementFrom.sendKeys(next, Key.RETURN);
-				remaining = remaining.substring(next.length);
-				// console.log(`Send ${next}`);
-				// 下句不是想要的结果
-				// console.log('elementFrom.getText():', await elementFrom.getText());
-
-				await driver.wait(until.elementLocated(By.css(TO_CSS)), 40000);
-
-				const element = await driver.findElement(By.css(TO_CSS));
-				const result = await element.getText();
-				RESULTS.push(result);
-
-				remainingLength = remaining.length;
-				if (remainingLength == 0) {
-					break;
-				}
-
-				await driver.get(URL);
-				elementFrom = await driver.findElement(By.css(FROM_CSS));
-				// } while(remainingLength > 0);
-			} while (true);
-
-			return RESULTS.join(LF);
-		}
-	} finally {
-		try {
-			await driver.quit();
-		} catch (e) {
-			console.error(e);
-		}
-
-		const END_TIME = new Date();
-		console.log(END_TIME.getTime() - START_TIME.getTime());
-	}
-}
-
-async function splitCommentCore(sourceFilename: string, commentFilesPath: string) {
+/**
+ * <en_us>the core method of split annotation</en_us>
+ * <zh_cn>拆分注释的核心方法</zh_cn>
+ * <zh_tw>拆分註釋的核心方法</zh_tw>
+ *
+ * @param {WebDriver} driver <en_us>Browser driver</en_us><zh_cn>浏览器驱动程序</zh_cn><zh_tw>瀏覽器驅動程序</zh_tw>
+ * @param {string} sourceFilename <en_us>The file name of the annotation to be split</en_us><zh_cn>所要拆分注释的文件名</zh_cn><zh_tw>所要拆分註釋的文件名</zh_tw>
+ * @param {string} commentFilesPath <en_us>Storage path after splitting</en_us><zh_cn>拆分后结果存放路径</zh_cn><zh_tw>拆分後結果存放路徑</zh_tw>
+ */
+async function splitCommentCore(
+	driver: WebDriver,
+	sourceFilename: string,
+	commentFilesPath: string,
+) {
 	const fileInfo = statSync(sourceFilename);
 	assert(fileInfo.isFile);
 
@@ -249,7 +141,6 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 	assert(statSync(commentFilesPath).isDirectory);
 
 	const SOURCE_CONTENT = readTextFileSync(sourceFilename);
-	// ...<en_us>...</en_us>...<zh_cn>...</zh_cn>...<zh_tw>...</zh_tw>...
 
 	const SPLIT_LEVEL_ONE = SOURCE_CONTENT.split(HTML_TAG_BEGIN__EN_US);
 	// remove the first one.
@@ -259,21 +150,19 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 	const CN_COMMENTS: string[] = [];
 	const TW_COMMENTS: string[] = [];
 	SPLIT_LEVEL_ONE.forEach((seg, index) => {
-		// removed <en_us>
-		// ...</en_us>...<zh_cn>...</zh_cn>...<zh_tw>...</zh_tw>...
-		const EN_US_END_POS = seg.indexOf('</en_us>');
+		const EN_US_END_POS = seg.indexOf(HTML_TAG_END__EN_US);
 		assert(EN_US_END_POS > -1, `${index}: EN_US_END_POS not right.\n${seg}`);
 
-		const ZH_CN_START_POS = seg.indexOf('<zh_cn>');
+		const ZH_CN_START_POS = seg.indexOf(HTML_TAG_BEGIN__ZH_CN);
 		assert(ZH_CN_START_POS > EN_US_END_POS, `${index}: ZH_CN_START_POS not right.\n${seg}`);
 
-		const ZH_CN_END_POS = seg.indexOf('</zh_cn>');
+		const ZH_CN_END_POS = seg.indexOf(HTML_TAG_END__ZH_CN);
 		assert(ZH_CN_END_POS > ZH_CN_START_POS, `${index}: ZH_CN_END_POS not right.\n${seg}`);
 
-		const ZH_TW_START_POS = seg.indexOf('<zh_tw>');
+		const ZH_TW_START_POS = seg.indexOf(HTML_TAG_BEGIN__ZH_TW);
 		assert(ZH_TW_START_POS > ZH_CN_END_POS, `${index}: ZH_TW_START_POS not right.\n${seg}`);
 
-		const ZH_TW_END_POS = seg.indexOf('</zh_tw>');
+		const ZH_TW_END_POS = seg.indexOf(HTML_TAG_END__ZH_TW);
 		assert(ZH_TW_END_POS > ZH_TW_START_POS, `${index}: ZH_TW_END_POS not right.\n${seg}`);
 
 		const EN_US_COMMENT = seg.substring(0, EN_US_END_POS);
@@ -286,9 +175,9 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 			ZH_TW_END_POS,
 		);
 
-		US_COMMENTS.push(`<en_us>${EN_US_COMMENT}</en_us>`);
-		CN_COMMENTS.push(`<zh_cn>${ZH_CN_COMMENT}</zh_cn>`);
-		TW_COMMENTS.push(`<zh_tw>${ZH_TW_COMMENT}</zh_tw>`);
+		US_COMMENTS.push(`${HTML_TAG_BEGIN__EN_US}${EN_US_COMMENT}${HTML_TAG_END__EN_US}`);
+		CN_COMMENTS.push(`${HTML_TAG_BEGIN__ZH_CN}${ZH_CN_COMMENT}${HTML_TAG_END__ZH_CN}`);
+		TW_COMMENTS.push(`${HTML_TAG_BEGIN__ZH_TW}${ZH_TW_COMMENT}${HTML_TAG_END__ZH_TW}`);
 	});
 
 	const GOAL_PATH = joinPath(
@@ -301,14 +190,14 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 	const CN_BEFORE_TRANSLATE = CN_COMMENTS.join(LF);
 	const EN_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE; // .replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__EN_US)
 	// .replaceAll(HTML_TAG_END__ZH_CN), HTML_TAG_END__EN_US))
-	const TW_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE
-		.replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW)
-		.replaceAll(HTML_TAG_END__ZH_CN, HTML_TAG_END__ZH_TW);
+	const TW_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE;
+	// .replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW)
+	// .replaceAll(HTML_TAG_END__ZH_CN, HTML_TAG_END__ZH_TW);
 
 	const DATA = [
-		['en_us', US_COMMENTS],
-		['zh_cn', CN_COMMENTS],
-		['zh_tw', TW_COMMENTS],
+		[I18N_LANG_NAME.en_us, US_COMMENTS],
+		[I18N_LANG_NAME.zh_cn, CN_COMMENTS],
+		[I18N_LANG_NAME.zh_tw, TW_COMMENTS],
 	];
 
 	for (let index = 0; index < 3; ++index) {
@@ -334,7 +223,8 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 					// console.log(EN_BEFORE_TRANSLATE);
 					writeTextFileSync(
 						OTHER_FILENAME,
-						(await translateByGoogleCore(
+						(await translateByGoogle(
+							driver,
 							EN_BEFORE_TRANSLATE,
 							GOOGLE_TRANSLATE_LANG_CN,
 							GOOGLE_TRANSLATE_LANG_EN,
@@ -348,8 +238,8 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 								HTML_TAG_END__EN_US,
 							)
 							.replace(
-								EN_REPLACE_PATCH_FROM,
-								EN_REPLACE_PATCH_TO,
+								EN_US_PATCH_REPLACE_FROM,
+								EN_US_PATCH_REPLACE_TO,
 							),
 						FILE_CREATE_NEW_AND_MODE_ALL,
 					);
@@ -376,11 +266,24 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 
 					writeTextFileSync(
 						OTHER_FILENAME,
-						await translateByGoogleCore(
+						(await translateByGoogle(
+							driver,
 							TW_BEFORE_TRANSLATE,
 							GOOGLE_TRANSLATE_LANG_CN,
 							GOOGLE_TRANSLATE_LANG_TW,
-						),
+						))
+							.replaceAll(
+								HTML_TAG_BEGIN__ZH_CN,
+								HTML_TAG_BEGIN__ZH_TW,
+							)
+							.replaceAll(
+								HTML_TAG_END__ZH_CN,
+								HTML_TAG_END__ZH_TW,
+							)
+							.replace(
+								ZH_TW_PATCH_REPLACE_FROM,
+								ZH_TW_PATCH_REPLACE_TO,
+							),
 						FILE_CREATE_NEW_AND_MODE_ALL,
 					);
 					break;
@@ -392,19 +295,40 @@ async function splitCommentCore(sourceFilename: string, commentFilesPath: string
 	}
 }
 
+/**
+ * <en_us>the core method of split annotation</en_us>
+ * <zh_cn>拆分注释的核心方法</zh_cn>
+ * <zh_tw>拆分註釋的核心方法</zh_tw>
+ *
+ * @param {string} sourceFilename <en_us>The file name of the annotation to be split</en_us><zh_cn>所要拆分注释的文件名</zh_cn><zh_tw>所要拆分註釋的文件名</zh_tw>
+ * @param {string} commentFilesPath <en_us>Disassembling result folder</en_us><zh_cn>拆分结果文件夹</zh_cn><zh_tw>拆分結果文件夾</zh_tw>
+ * @returns {Promise<boolean>} <en_us>Whether the split is successful</en_us><zh_cn>是否拆分成功</zh_cn><zh_tw>是否拆分成功</zh_tw>
+ */
 export async function splitComments(
 	sourceFilename: string,
 	commentFilesPath: string,
 ): Promise<boolean> {
+	const driver = await SeleniumHelper.getSingletonHeadlessChromeDriver();
 	try {
-		await splitCommentCore(sourceFilename, commentFilesPath);
+		await splitCommentCore(driver, sourceFilename, commentFilesPath);
 		return true;
 	} catch (e) {
 		console.error(e);
 		return false;
+	} finally {
+		await SeleniumHelper.closeSingletonHeadlessChromeDriver();
 	}
 }
 
+/**
+ * <en_us>Get the annotation entry according to the split result folder and language</en_us>
+ * <zh_cn>根据拆分结果文件夹与语言获取其中的注释条目</zh_cn>
+ * <zh_tw>根據拆分結果文件夾與語言獲取其中的註釋條目</zh_tw>
+ *
+ * @param {string} dir <en_us>Disassembling result folder</en_us><zh_cn>拆分结果文件夹</zh_cn><zh_tw>拆分結果文件夾</zh_tw>
+ * @param {string} lang <en_us>Language</en_us><zh_cn>语言</zh_cn><zh_tw>語言</zh_tw>
+ * @returns {string[]} <en_us>arrays: entry of the corresponding language</en_us><zh_cn>数组：相应语言的条目</zh_cn><zh_tw>數組：相應語言的條目</zh_tw>
+ */
 function getSplitResultFromGoalFileByLang(dir: string, lang: string): string[] {
 	const ARRAY = readTextFileSync(joinPath(dir, `${lang}.txt`))
 		.substring(I18N_HTML_BEGIN_TAG_LENGTH).replace(
@@ -418,6 +342,15 @@ function getSplitResultFromGoalFileByLang(dir: string, lang: string): string[] {
 	return ARRAY;
 }
 
+/**
+ * <en_us>merger notes</en_us>
+ * <zh_cn>合并注释</zh_cn>
+ * <zh_tw>合併註釋</zh_tw>
+ *
+ * @param {string} sourceFilename <en_us>The file name to be combined to be combined</en_us><zh_cn>要合并注释的文件名</zh_cn><zh_tw>要合併註釋的文件名</zh_tw>
+ * @param {string} commentFilesPath <en_us>Disassembling result folder</en_us><zh_cn>拆分结果文件夹</zh_cn><zh_tw>拆分結果文件夾</zh_tw>
+ * @returns {boolean} <en_us>Whether successful merger</en_us><zh_cn>是否成功合并</zh_cn><zh_tw>是否成功合併</zh_tw>
+ */
 export function joinComments(sourceFilename: string, commentFilesPath: string): boolean {
 	try {
 		const fileInfo = statSync(sourceFilename);
@@ -431,60 +364,60 @@ export function joinComments(sourceFilename: string, commentFilesPath: string): 
 			writeTextFileSync(BAK_FILENAME, SOURCE_CONTENT);
 		}
 
-		const GOAL_PATH = joinPath(
+		const GOAL_PATH = (sourceFilename.startsWith(SEP) ? SEP : '').concat(joinPath(
 			commentFilesPath,
 			sourceFilename.split(SEP).pop() as string,
 			SEP,
-		);
-		const US_COMMENTS: string[] = getSplitResultFromGoalFileByLang(GOAL_PATH, 'en_us');
-		const CN_COMMENTS: string[] = getSplitResultFromGoalFileByLang(GOAL_PATH, 'zh_cn');
-		const TW_COMMENTS: string[] = getSplitResultFromGoalFileByLang(GOAL_PATH, 'zh_tw');
+		));
+		const US_COMMENTS: string[] = getSplitResultFromGoalFileByLang(GOAL_PATH, I18N_LANG_NAME.en_us);
+		const CN_COMMENTS: string[] = getSplitResultFromGoalFileByLang(GOAL_PATH, I18N_LANG_NAME.zh_cn);
+		const TW_COMMENTS: string[] = getSplitResultFromGoalFileByLang(GOAL_PATH, I18N_LANG_NAME.zh_tw);
 
 		const CODES_ARRAY = SOURCE_CONTENT.replace(
-			/((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g,
+			HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN,
 			SEPARATOR_OF_SPLIT,
 		)
 			.split(SEPARATOR_OF_SPLIT);
 
 		const COUNT = US_COMMENTS.length;
-		console.log(CN_COMMENTS.length, TW_COMMENTS.length, COUNT);
+		// console.log(CN_COMMENTS.length, TW_COMMENTS.length, COUNT);
 		assert(COUNT === CN_COMMENTS.length && COUNT === TW_COMMENTS.length);
 
-		console.log(
-			'SOURCE_CONTENT\n',
-			SOURCE_CONTENT,
-			'\n',
-			'CODES_ARRAY\n',
-			CODES_ARRAY,
-			'\n',
-			'US_COMMENTS\n',
-			US_COMMENTS,
-			'\n',
-			'CN_COMMENTS\n',
-			CN_COMMENTS,
-			'\n',
-			'TW_COMMENTS\n',
-			TW_COMMENTS,
-			'\n',
-			'COUNT',
-			COUNT,
-			'\n',
-		);
+		// console.log(
+		// 	'SOURCE_CONTENT\n',
+		// 	SOURCE_CONTENT,
+		// 	'\n',
+		// 	'CODES_ARRAY\n',
+		// 	CODES_ARRAY,
+		// 	'\n',
+		// 	'US_COMMENTS\n',
+		// 	US_COMMENTS,
+		// 	'\n',
+		// 	'CN_COMMENTS\n',
+		// 	CN_COMMENTS,
+		// 	'\n',
+		// 	'TW_COMMENTS\n',
+		// 	TW_COMMENTS,
+		// 	'\n',
+		// 	'COUNT',
+		// 	COUNT,
+		// 	'\n',
+		// );
 
 		for (let i = 0; i < COUNT; ++i) {
 			const OFFSET = 6 * i;
-			CODES_ARRAY[OFFSET + 1] = `<en_us>${US_COMMENTS[i]}</en_us>`;
-			CODES_ARRAY[OFFSET + 3] = `<zh_cn>${CN_COMMENTS[i]}</zh_cn>`;
-			CODES_ARRAY[OFFSET + 5] = `<zh_tw>${TW_COMMENTS[i]}</zh_tw>`;
+			CODES_ARRAY[OFFSET + 1] = `${HTML_TAG_BEGIN__EN_US}${US_COMMENTS[i]}${HTML_TAG_END__EN_US}`;
+			CODES_ARRAY[OFFSET + 3] = `${HTML_TAG_BEGIN__ZH_CN}${CN_COMMENTS[i]}${HTML_TAG_END__ZH_CN}`;
+			CODES_ARRAY[OFFSET + 5] = `${HTML_TAG_BEGIN__ZH_TW}${TW_COMMENTS[i]}${HTML_TAG_END__ZH_TW}`;
 		}
-		console.log(
-			'CODES_ARRAY\n',
-			CODES_ARRAY,
-			'\n\n\n\n\n',
-			'[END RESULT]\n',
-			CODES_ARRAY.join(''),
-			'\n',
-		);
+		// console.log(
+		// 	'CODES_ARRAY\n',
+		// 	CODES_ARRAY,
+		// 	'\n\n\n\n\n',
+		// 	'[END RESULT]\n',
+		// 	CODES_ARRAY.join(''),
+		// 	'\n',
+		// );
 
 		writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
 		return true;
@@ -494,7 +427,15 @@ export function joinComments(sourceFilename: string, commentFilesPath: string): 
 	}
 }
 
-async function cn2trilingualCore(sourceFilename: string) {
+/**
+ * <en_us>the core method of translation Chinese to three -character</en_us>
+ * <zh_cn>翻译中文到三语的核心方法</zh_cn>
+ * <zh_tw>翻譯中文到三語的核心方法</zh_tw>
+ *
+ * @param {WebDriver} driver <en_us>Browser driver</en_us><zh_cn>浏览器驱动程序</zh_cn><zh_tw>瀏覽器驅動程序</zh_tw>
+ * @param {string} sourceFilenames <en_us>to translate Chinese to three -character file name</en_us><zh_cn>要翻译中文到三语的文件名</zh_cn><zh_tw>要翻譯中文到三語的文件名</zh_tw>
+ */
+async function cn2trilingualCore(driver: WebDriver, sourceFilename: string) {
 	const SEG_COUNT_PER_ITEM = 6;
 
 	// console.log('sourceFilename', sourceFilename);
@@ -512,13 +453,13 @@ async function cn2trilingualCore(sourceFilename: string) {
 	const TW_COMMENTS: string[] = [];
 
 	const CODES_ARRAY = SOURCE_CONTENT
-		.replace(/((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g, SEPARATOR_OF_SPLIT)
+		.replace(HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN, SEPARATOR_OF_SPLIT)
 		.split(SEPARATOR_OF_SPLIT);
 	const LAST_ITEM_START_INDEX = CODES_ARRAY.length - SEG_COUNT_PER_ITEM;
 	for (let i = 0; i < LAST_ITEM_START_INDEX; i += SEG_COUNT_PER_ITEM) {
-		// US_COMMENTS.push(`<en_us>${CODES_ARRAY[i + 1]}</en_us>`);
-		CN_COMMENTS.push(`<zh_cn>${CODES_ARRAY[i + 3]}</zh_cn>`);
-		// TW_COMMENTS.push(`<zh_tw>${CODES_ARRAY[i + 5]}</zh_tw>`);
+		// US_COMMENTS.push(`${HTML_TAG_BEGIN__EN_US}${CODES_ARRAY[i + 1]}${HTML_TAG_END__EN_US}`);
+		CN_COMMENTS.push(`${HTML_TAG_BEGIN__ZH_CN}${CODES_ARRAY[i + 3]}${HTML_TAG_END__ZH_CN}`);
+		// TW_COMMENTS.push(`${HTML_TAG_BEGIN__ZH_TW}${CODES_ARRAY[i + 5]}${HTML_TAG_END__ZH_TW}`);
 	}
 	// console.log('CN_COMMENTS.length', CN_COMMENTS.length);
 
@@ -527,15 +468,16 @@ async function cn2trilingualCore(sourceFilename: string) {
 	// console.log('CN_BEFORE_TRANSLATE', CN_BEFORE_TRANSLATE);
 	const EN_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE; // .replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__EN_US)
 	// .replaceAll(HTML_TAG_END__ZH_CN), HTML_TAG_END__EN_US))
-	const TW_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE
-		.replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW)
-		.replaceAll(HTML_TAG_END__ZH_CN, HTML_TAG_END__ZH_TW);
+	const TW_BEFORE_TRANSLATE = CN_BEFORE_TRANSLATE;
+	// .replaceAll(HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW)
+	// .replaceAll(HTML_TAG_END__ZH_CN, HTML_TAG_END__ZH_TW);
 
 	US_COMMENTS.length = 0;
 	// CN_COMMENTS.length = 0;
 	TW_COMMENTS.length = 0;
 
-	const EN_FULL_CONTENT = (await translateByGoogleCore(
+	const EN_FULL_CONTENT = (await translateByGoogle(
+		driver,
 		EN_BEFORE_TRANSLATE,
 		GOOGLE_TRANSLATE_LANG_CN,
 		GOOGLE_TRANSLATE_LANG_EN,
@@ -547,59 +489,95 @@ async function cn2trilingualCore(sourceFilename: string) {
 			HTML_TAG_END__ZH_CN,
 			HTML_TAG_END__EN_US,
 		)
-		.replace(EN_REPLACE_PATCH_FROM, EN_REPLACE_PATCH_TO);
+		.replace(EN_US_PATCH_REPLACE_FROM, EN_US_PATCH_REPLACE_TO);
 
 	EN_FULL_CONTENT
 		.substring(I18N_HTML_BEGIN_TAG_LENGTH, EN_FULL_CONTENT.length - I18N_HTML_BEGIN_TAG_LENGTH - 1)
-		.replace(/<\/en_us>\n<en_us>/g, SEPARATOR_OF_SPLIT)
-		.split(SEPARATOR_OF_SPLIT).forEach((item) => US_COMMENTS.push(item));
+		.replace(
+			new RegExp(`${HTML_TAG_END__EN_US}\n${HTML_TAG_BEGIN__EN_US}`, 'g'),
+			SEPARATOR_OF_SPLIT,
+		)
+		.split(SEPARATOR_OF_SPLIT).forEach((item: string) => US_COMMENTS.push(item));
 	// console.log('EN_FULL_CONTENT', EN_FULL_CONTENT);
 
-	const TW_FULL_CONTENT = await translateByGoogleCore(
+	const TW_FULL_CONTENT = (await translateByGoogle(
+		driver,
 		TW_BEFORE_TRANSLATE,
 		GOOGLE_TRANSLATE_LANG_CN,
 		GOOGLE_TRANSLATE_LANG_TW,
-	);
+	)).replaceAll(
+		HTML_TAG_BEGIN__ZH_CN,
+		HTML_TAG_BEGIN__ZH_TW,
+	)
+		.replaceAll(
+			HTML_TAG_END__ZH_CN,
+			HTML_TAG_END__ZH_TW,
+		)
+		.replace(ZH_TW_PATCH_REPLACE_FROM, ZH_TW_PATCH_REPLACE_TO);
 	// console.log('TW_FULL_CONTENT', TW_FULL_CONTENT);
 	TW_FULL_CONTENT
 		.substring(I18N_HTML_BEGIN_TAG_LENGTH, TW_FULL_CONTENT.length - I18N_HTML_BEGIN_TAG_LENGTH - 1)
-		.replace(/<\/zh_tw>\n<zh_tw>/g, SEPARATOR_OF_SPLIT)
-		.split(SEPARATOR_OF_SPLIT).forEach((item) => TW_COMMENTS.push(item));
+		.replace(
+			new RegExp(`${HTML_TAG_END__ZH_TW}\n${HTML_TAG_BEGIN__ZH_TW}`, 'g'),
+			SEPARATOR_OF_SPLIT,
+		)
+		.split(SEPARATOR_OF_SPLIT).forEach((item: string) => TW_COMMENTS.push(item));
 
 	// console.log('US_COMMENTS.length', US_COMMENTS.length);
 	// console.log('TW_COMMENTS.length', TW_COMMENTS.length);
 	const COUNT = US_COMMENTS.length;
 	for (let i = 0; i < COUNT; ++i) {
 		const OFFSET = SEG_COUNT_PER_ITEM * i;
-		CODES_ARRAY[OFFSET + 1] = `<en_us>${US_COMMENTS[i]}</en_us>`;
-		// CODES_ARRAY[OFFSET + 3] = `<zh_cn>${CN_COMMENTS[i]}</zh_cn>`;
+		CODES_ARRAY[OFFSET + 1] = `${HTML_TAG_BEGIN__EN_US}${US_COMMENTS[i]}${HTML_TAG_END__EN_US}`;
+		// CODES_ARRAY[OFFSET + 3] = `${HTML_TAG_BEGIN__ZH_CN}${CN_COMMENTS[i]}${HTML_TAG_END__ZH_CN}`;
 		CODES_ARRAY[OFFSET + 3] = `${CN_COMMENTS[i]}`;
-		CODES_ARRAY[OFFSET + 5] = `<zh_tw>${TW_COMMENTS[i]}</zh_tw>`;
+		CODES_ARRAY[OFFSET + 5] = `${HTML_TAG_BEGIN__ZH_TW}${TW_COMMENTS[i]}${HTML_TAG_END__ZH_TW}`;
 	}
 
 	writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
 }
 
+/**
+ * <en_us>Translate multiple files in Chinese label to trimina</en_us>
+ * <zh_cn>翻译多个文件中文标签内容到三语</zh_cn>
+ * <zh_tw>翻譯多個文件中文標籤內容到三語</zh_tw>
+ *
+ * @param {string[]} sourceFilenames <en_us>array: The file name of Chinese to three -character files</en_us><zh_cn>数组：要翻译中文到三语的文件名</zh_cn><zh_tw>數組：要翻譯中文到三語的文件名</zh_tw>
+ * @returns {Promise<boolean>} <en_us>asynchronous results: whether to successfully translate all files</en_us><zh_cn>异步结果：是否成功翻译所有文件</zh_cn><zh_tw>異步結果：是否成功翻譯所有文件</zh_tw>
+ */
 export async function cn2trilingual(sourceFilenames: string[]): Promise<boolean> {
+	const driver: WebDriver = await SeleniumHelper.getSingletonHeadlessChromeDriver();
+
 	const COUNT = sourceFilenames.length;
 	for (let i = 0; i < COUNT; ++i) {
 		const SOURCE_FILENAME = sourceFilenames[i];
 		try {
-			await cn2trilingualCore(SOURCE_FILENAME);
+			await cn2trilingualCore(driver, SOURCE_FILENAME);
 		} catch (e) {
 			console.error(SOURCE_FILENAME, e);
 			return false;
 		}
 	}
+
+	await SeleniumHelper.closeSingletonHeadlessChromeDriver();
 	return true;
 }
 
+/**
+ * <en_us>HTML label segment that removes the specified language</en_us>
+ * <zh_cn>移除指定语言的html标签段</zh_cn>
+ * <zh_tw>移除指定語言的html標籤段</zh_tw>
+ *
+ * @param {string} source <en_us>original content</en_us><zh_cn>原始内容</zh_cn><zh_tw>原始內容</zh_tw>
+ * @param {string} lang <en_us>international language name</en_us><zh_cn>国际化语言名</zh_cn><zh_tw>國際化語言名</zh_tw>
+ * @returns {string} <en_us>The results after removing the corresponding language HTML label</en_us><zh_cn>移除相应语言html标签后的结果</zh_cn><zh_tw>移除相應語言html標籤後的結果</zh_tw>
+ */
 function removeLangSeg(source: string, lang: string): string {
 	// console.log(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))<${lang}>`);
 	/*
-		/[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<en_us>/g
-		/[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<zh_cn>/g
-		/[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<zh_tw>/g
+		/[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<en_us\>/g
+		/[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<zh_cn\>/g
+		/[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<zh_tw\>/g
 	*/
 
 	// return source
@@ -621,27 +599,37 @@ function removeLangSeg(source: string, lang: string): string {
 		.replace(new RegExp(`<${lang}[^\0]+\0<\/${lang}>`, 'g'), '');
 }
 
+/**
+ * <en_us>The HTML label segment that removes other languages can remove the HTML tag itself (retaining text content) of the designated language at the same time (retaining text content)</en_us>
+ * <zh_cn>移除其它语言的html标签段，可同时移除所指定语言的html标签本身（保留文本内容）</zh_cn>
+ * <zh_tw>移除其它語言的html標籤段，可同時移除所指定語言的html標籤本身（保留文本內容）</zh_tw>
+ *
+ * @param {string} source <en_us>original content</en_us><zh_cn>原始内容</zh_cn><zh_tw>原始內容</zh_tw>
+ * @param {string} lang <en_us>international language name</en_us><zh_cn>国际化语言名</zh_cn><zh_tw>國際化語言名</zh_tw>
+ * @param {boolean} keepLangTag <en_us>Whether the split result retains the language html label</en_us><zh_cn>拆分结果是否保留语言html标签</zh_cn><zh_tw>拆分結果是否保留語言html標籤</zh_tw>
+ * @returns {string} <en_us>The results after the HTML label section that removes other languages</en_us><zh_cn>移除其它语言的html标签段后的结果</zh_cn><zh_tw>移除其它語言的html標籤段後的結果</zh_tw>
+ */
 function keepByLang(source: string, lang: string, keepLangTag: boolean): string {
 	let result = source;
 
 	switch (lang) {
-		case 'en_us':
+		case I18N_LANG_NAME.en_us:
 			break;
-		case 'zh_cn':
+		case I18N_LANG_NAME.zh_cn:
 			result = result
 				.replace(
 					new RegExp(
-						`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))<en_us>[^\r\n]+</en_us><${lang}>`,
+						`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))${HTML_TAG_BEGIN__EN_US}[^\r\n]+${HTML_TAG_END__EN_US}<${lang}>`,
 						'g',
 					),
 					`$1<${lang}>`,
 				);
 			break;
-		case 'zh_tw':
+		case I18N_LANG_NAME.zh_tw:
 			result = result
 				.replace(
 					new RegExp(
-						`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))<en_us>[^\r\n]+</en_us><zh_cn>[^\r\n]+</zh_cn><${lang}>`,
+						`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))${HTML_TAG_BEGIN__EN_US}[^\r\n]+${HTML_TAG_END__EN_US}${HTML_TAG_BEGIN__ZH_CN}[^\r\n]+${HTML_TAG_END__ZH_CN}<${lang}>`,
 						'g',
 					),
 					`$1<${lang}>`,
@@ -651,7 +639,7 @@ function keepByLang(source: string, lang: string, keepLangTag: boolean): string 
 			break;
 	}
 
-	['en_us', 'zh_cn', 'zh_tw'].filter((one) => one !== lang).forEach((removeLang) => {
+	I18N_LANG_ARRAY.filter((one) => one !== lang).forEach((removeLang) => {
 		result = removeLangSeg(result, removeLang);
 	});
 
@@ -662,28 +650,41 @@ function keepByLang(source: string, lang: string, keepLangTag: boolean): string 
 	return result;
 }
 
+/**
+ * <en_us>Several readme.md files (one new file in each international language)</en_us>
+ * <zh_cn>拆分若干README.md文件（每种国际化语言一个新文件）</zh_cn>
+ * <zh_tw>拆分若干README.md文件（每種國際化語言一個新文件）</zh_tw>
+ *
+ * @param {boolean} keepLangTag <en_us>Whether the split result retains the language html label</en_us><zh_cn>拆分结果是否保留语言html标签</zh_cn><zh_tw>拆分結果是否保留語言html標籤</zh_tw>
+ * @param {string[]} sourceFilenames <en_us>array: Reademe.md file name to be split</en_us><zh_cn>数组：要拆分的READEME.md文件名</zh_cn><zh_tw>數組：要拆分的READEME.md文件名</zh_tw>
+ * @returns {boolean} <en_us>Whether to successfully split Reademe.md file</en_us><zh_cn>是否成功拆分READEME.md文件</zh_cn><zh_tw>是否成功拆分READEME.md文件</zh_tw>
+ */
 export function splitReadmeFiles(keepLangTag: boolean, sourceFilenames: string[]): boolean {
 	const COUNT = sourceFilenames.length;
 	for (let i = 0; i < COUNT; ++i) {
 		const SOURCE_FILENAME = sourceFilenames[i];
 		try {
+			if (SOURCE_FILENAME.toLowerCase().lastIndexOf('readme.md') === -1) {
+				continue;
+			}
+
 			const SOURCE_CONTENT = readTextFileSync(SOURCE_FILENAME);
 
 			// console.log('SOURCE_CONTENT', SOURCE_CONTENT);
-			// console.log('en_us', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw'));
-			// console.log('zh_cn', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw'));
-			// console.log('zh_tw', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn'));
+			// console.log(I18N_LANG_NAME.en_us, removeLangSeg(removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.zh_cn), I18N_LANG_NAME.zh_tw));
+			// console.log(I18N_LANG_NAME.zh_cn, removeLangSeg(removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.en_us), I18N_LANG_NAME.zh_tw));
+			// console.log(I18N_LANG_NAME.zh_tw, removeLangSeg(removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.en_us), I18N_LANG_NAME.zh_cn));
 
 			const GOAL_FILENAME_PREFIX = SOURCE_FILENAME.substring(
 				0,
 				SOURCE_FILENAME.toLowerCase().lastIndexOf('readme.md'),
 			);
 
-			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.en_us.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw'));
-			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_cn.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw'));
-			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_tw.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn'));
+			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.en_us.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.zh_cn), I18N_LANG_NAME.zh_tw));
+			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_cn.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.en_us), I18N_LANG_NAME.zh_tw));
+			// writeTextFileSync(GOAL_FILENAME_PREFIX.concat('README.zh_tw.md'), removeLangSeg(removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.en_us), I18N_LANG_NAME.zh_cn));
 
-			['en_us', 'zh_cn', 'zh_tw'].forEach((lang) => {
+			I18N_LANG_ARRAY.forEach((lang) => {
 				writeTextFileSync(
 					GOAL_FILENAME_PREFIX.concat(`README.${lang}.md`),
 					keepByLang(SOURCE_CONTENT, lang, keepLangTag),
@@ -697,6 +698,15 @@ export function splitReadmeFiles(keepLangTag: boolean, sourceFilenames: string[]
 	return true;
 }
 
+/**
+ * <en_us>Several files are split, a I18N folder will be automatically established, and a sub -folder will be established for each international language. The split result corresponds to</en_us>
+ * <zh_cn>拆分若干文件，会自动建立一个i18n文件夹，并针对每一种国际化语言建立一个子文件夹，将拆分结果对应放入</zh_cn>
+ * <zh_tw>拆分若干文件，會自動建立一個i18n文件夾，並針對每一種國際化語言建立一個子文件夾，將拆分結果對應放入</zh_tw>
+ *
+ * @param {boolean} keepLangTag <en_us>Whether the split result retains the language html label</en_us><zh_cn>拆分结果是否保留语言html标签</zh_cn><zh_tw>拆分結果是否保留語言html標籤</zh_tw>
+ * @param {string[]} sourceFilenames <en_us>array: file name to be split</en_us><zh_cn>数组：要拆分的文件名</zh_cn><zh_tw>數組：要拆分的文件名</zh_tw>
+ * @returns {boolean} <en_us>Whether to successfully split all files</en_us><zh_cn>是否成功拆分所有文件</zh_cn><zh_tw>是否成功拆分所有文件</zh_tw>
+ */
 export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boolean {
 	const COUNT = sourceFilenames.length;
 	for (let i = 0; i < COUNT; ++i) {
@@ -705,21 +715,44 @@ export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boo
 			const SOURCE_FILENAME_SPLIT_RESULT = SOURCE_FILENAME.split(SEP);
 
 			const FILENAME = SOURCE_FILENAME_SPLIT_RESULT.pop() as string;
-			const GOAL_PATH = joinPath(
+			const GOAL_PATH = (SOURCE_FILENAME.startsWith(SEP) ? SEP : '').concat(joinPath(
 				SOURCE_FILENAME_SPLIT_RESULT.join(SEP),
 				'i18n',
-			);
+			));
 
 			const splitFile = () => {
 				const SOURCE_CONTENT = readTextFileSync(SOURCE_FILENAME);
 				[
-					['en_us', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'zh_cn'), 'zh_tw')],
-					['zh_cn', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_tw')],
-					['zh_tw', removeLangSeg(removeLangSeg(SOURCE_CONTENT, 'en_us'), 'zh_cn')],
+					[
+						I18N_LANG_NAME.en_us,
+						removeLangSeg(
+							removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.zh_cn),
+							I18N_LANG_NAME.zh_tw,
+						),
+					],
+					[
+						I18N_LANG_NAME.zh_cn,
+						removeLangSeg(
+							removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.en_us),
+							I18N_LANG_NAME.zh_tw,
+						),
+					],
+					[
+						I18N_LANG_NAME.zh_tw,
+						removeLangSeg(
+							removeLangSeg(SOURCE_CONTENT, I18N_LANG_NAME.en_us),
+							I18N_LANG_NAME.zh_cn,
+						),
+					],
 				].forEach(([lang, content]) => {
 					const PATH = joinPath(GOAL_PATH, lang);
 					mkdirSync(PATH, { recursive: true });
-					writeTextFileSync(joinPath(PATH, FILENAME), content);
+					writeTextFileSync(
+						joinPath(PATH, FILENAME),
+						keepLangTag
+							? content
+							: content.replaceAll(`<${lang}>`, '').replaceAll(`</${lang}>`, ''),
+					);
 				});
 			};
 
@@ -749,7 +782,7 @@ export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boo
 					splitFile();
 					break;
 				default:
-					['en_us', 'zh_cn', 'zh_tw'].forEach((lang) => {
+					I18N_LANG_ARRAY.forEach((lang) => {
 						const PATH = joinPath(GOAL_PATH, lang);
 						mkdirSync(PATH, { recursive: true });
 						copyFileSync(SOURCE_FILENAME, joinPath(PATH, FILENAME));
@@ -764,7 +797,11 @@ export function splitFiles(keepLangTag: boolean, sourceFilenames: string[]): boo
 	return true;
 }
 
-// console.log('before showHelpOrVersionOrCallbackAndShowUsedTime()');
+/**
+ * <en_us>entrance: display help or version, or perform different tasks according to the parameters</en_us>
+ * <zh_cn>入口：显示帮助或版本，或根据参数执行不同任务</zh_cn>
+ * <zh_tw>入口：顯示幫助或版本，或根據參數執行不同任務</zh_tw>
+ */
 showHelpOrVersionOrCallbackAndShowUsedTime(
 	{
 		en_us:
@@ -776,10 +813,15 @@ showHelpOrVersionOrCallbackAndShowUsedTime(
 	2,
 	async () => {
 		const [command, source, ...others] = COMMAND_LINE_ARGS;
-		// console.log('call me', command, source);
 		switch (command) {
 			case 'splitComments':
-				console.log(await splitComments(source, others[0]));
+				console.log(
+					await splitComments(
+						source,
+						others[0],
+					),
+				);
+
 				break;
 			case 'joinComments':
 				console.log(joinComments(source, others[0]));
@@ -793,9 +835,93 @@ showHelpOrVersionOrCallbackAndShowUsedTime(
 			case 'splitFiles':
 				console.log(splitFiles(source === 'true', [...others]));
 				break;
+			case 'txtCn2trilingual':
+				console.log(await txtCn2trilingual([source, ...others]));
+				break;
 			default:
 				break;
 		}
 	},
 );
-// console.log('after showHelpOrVersionOrCallbackAndShowUsedTime()');
+
+/**
+ * <en_us>Translate multiple files in Chinese label to trimina</en_us>
+ * <zh_cn>翻译多个文本文件中文标签内容到三语</zh_cn>
+ * <zh_tw>翻譯多個文件中文標籤內容到三語</zh_tw>
+ *
+ * @param {string[]} sourceFilenames <en_us>array: The file name of Chinese to three -character files</en_us><zh_cn>数组：要翻译中文到三语的文件名</zh_cn><zh_tw>數組：要翻譯中文到三語的文件名</zh_tw>
+ * @returns {Promise<boolean>} <en_us>asynchronous results: whether to successfully translate all files</en_us><zh_cn>异步结果：是否成功翻译所有文件</zh_cn><zh_tw>異步結果：是否成功翻譯所有文件</zh_tw>
+ */
+export async function txtCn2trilingual(sourceFilenames: string[]): Promise<boolean> {
+	const driver: WebDriver = await SeleniumHelper.getSingletonHeadlessChromeDriver();
+
+	const COUNT = sourceFilenames.length;
+	for (let i = 0; i < COUNT; ++i) {
+		const SOURCE_FILENAME = sourceFilenames[i];
+		try {
+			await txtCn2trilingualCore(driver, SOURCE_FILENAME);
+		} catch (e) {
+			console.error(SOURCE_FILENAME, e);
+			return false;
+		}
+	}
+
+	await SeleniumHelper.closeSingletonHeadlessChromeDriver();
+	return true;
+}
+
+/**
+ * <en_us>the core method of translation Chinese to three -character</en_us>
+ * <zh_cn>翻译文本文件之中文到三语的核心方法</zh_cn>
+ * <zh_tw>翻譯中文到三語的核心方法</zh_tw>
+ *
+ * @param {WebDriver} driver <en_us>Browser driver</en_us><zh_cn>浏览器驱动程序</zh_cn><zh_tw>瀏覽器驅動程序</zh_tw>
+ * @param {string} sourceFilenames <en_us>to translate Chinese to three -character file name</en_us><zh_cn>要翻译中文到三语的文件名</zh_cn><zh_tw>要翻譯中文到三語的文件名</zh_tw>
+ */
+async function txtCn2trilingualCore(driver: WebDriver, sourceFilename: string) {
+	// console.log('sourceFilename', sourceFilename);
+	const fileInfo = statSync(sourceFilename);
+	assert(fileInfo.isFile);
+
+	const SOURCE_CONTENT = readTextFileSync(sourceFilename);
+	const BAK_FILENAME = sourceFilename.concat(getFilenameTimestampPostfix(), '.bak');
+	if (!existsSync(BAK_FILENAME)) {
+		writeTextFileSync(BAK_FILENAME, SOURCE_CONTENT);
+	}
+
+	const SOURCE_FILENAME_SPLIT_RESULT = sourceFilename.split(SEP);
+	// console.log({ sourceFilename, SOURCE_FILENAME_SPLIT_RESULT });
+
+	const FILENAME = SOURCE_FILENAME_SPLIT_RESULT.pop() as string;
+	const GOAL_PATH = (sourceFilename.startsWith(SEP) ? SEP : '').concat(
+		SOURCE_FILENAME_SPLIT_RESULT.join(SEP),
+	);
+	// console.log({ FILENAME });
+	// console.log({ GOAL_PATH });
+
+	const FILENAME_SPLIT_BY_DOT_RESULT = FILENAME.split('.');
+	const EXTENTION = FILENAME_SPLIT_BY_DOT_RESULT.pop() as string;
+	const FILENAME_PREFIX = FILENAME_SPLIT_BY_DOT_RESULT.join('.');
+
+	const EN_US_FILENAME = joinPath(GOAL_PATH, FILENAME_PREFIX.concat('.en_us.', EXTENTION));
+	if (!existsSync(EN_US_FILENAME)) {
+		const EN_FULL_CONTENT = await translateByGoogle(
+			driver,
+			SOURCE_CONTENT,
+			GOOGLE_TRANSLATE_LANG_CN,
+			GOOGLE_TRANSLATE_LANG_EN,
+		);
+		writeTextFileSync(EN_US_FILENAME, EN_FULL_CONTENT);
+	}
+
+	const ZH_TW_FILENAME = joinPath(GOAL_PATH, FILENAME_PREFIX.concat('.zh_tw.', EXTENTION));
+	if (!existsSync(ZH_TW_FILENAME)) {
+		const TW_FULL_CONTENT = await translateByGoogle(
+			driver,
+			SOURCE_CONTENT,
+			GOOGLE_TRANSLATE_LANG_CN,
+			GOOGLE_TRANSLATE_LANG_TW,
+		);
+		writeTextFileSync(ZH_TW_FILENAME, TW_FULL_CONTENT);
+	}
+}

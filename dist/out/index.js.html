@@ -1,21 +1,49 @@
-/*
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: index.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: index.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/*
  * Copyright (c) 2024 anqisoft@gmail.com
  * ts_i18n/index.ts
  *
- * <en_us>
+ * &lt;en_us>
  * Creation: January 9, 2024 11:28:16
  * Function: Provide i18N related functions such as code or Readme.md file.
- * </en_us>
+ * &lt;/en_us>
  *
- * <zh_cn>
+ * &lt;zh_cn>
  * 创建：2024年1月9日 11:28:16
  * 功能：对代码或readme.md文件提供i18n相关拆分、合并、翻译等功能。
- * </zh_cn>
+ * &lt;/zh_cn>
  *
- * <zh_tw>
+ * &lt;zh_tw>
  * 創建：2024年1月9日 11:28:16
  * 功能：對代碼或readme.md文件提供i18n相關拆分、合併、翻譯等功能。
- * </zh_tw>
+ * &lt;/zh_tw>
  */
 import { assert, COMMAND_LINE_ARGS, copyFileSync, existsSync, FILE_CREATE_NEW_AND_MODE_ALL, FILE_MODE_ALL, getFilenameTimestampPostfix, HTML_TAG_BEGIN__EN_US, HTML_TAG_BEGIN__ZH_CN, HTML_TAG_BEGIN__ZH_TW, 
 // type I18N_LANG_KIND,
@@ -29,43 +57,43 @@ import { showHelpOrVersionOrCallbackAndShowUsedTime } from // '../ts_command_lin
 import { SeleniumHelper, } from 'https://raw.githubusercontent.com/anqisoft/ts_selenium/main/index.ts';
 import { GOOGLE_TRANSLATE_LANG_CN, GOOGLE_TRANSLATE_LANG_EN, GOOGLE_TRANSLATE_LANG_TW, translateByGoogle, } from 'https://raw.githubusercontent.com/anqisoft/ts_translate_by_google/main/index.ts';
 /**
- * <en_us>regular expression: content to be replaced when modifying the results of the simplified translation</en_us>
- * <zh_cn>正则表达式：修正简译英结果时所要替换的内容</zh_cn>
- * <zh_tw>正則表達式：修正簡譯英結果時所要替換的內容</zh_tw>
+ * &lt;en_us>regular expression: content to be replaced when modifying the results of the simplified translation&lt;/en_us>
+ * &lt;zh_cn>正则表达式：修正简译英结果时所要替换的内容&lt;/zh_cn>
+ * &lt;zh_tw>正則表達式：修正簡譯英結果時所要替換的內容&lt;/zh_tw>
  */
 const EN_US_PATCH_REPLACE_FROM = new RegExp(HTML_TAG_BEGIN__EN_US.concat(' ([^\n]+) ', HTML_TAG_END__EN_US), 'g');
 /**
- * <en_us>The string to be replaced when the results of the simplified translation of the British</en_us>
- * <zh_cn>修正简译英结果时所要替换到的字符串</zh_cn>
- * <zh_tw>修正簡譯英結果時所要替換到的字符串</zh_tw>
+ * &lt;en_us>The string to be replaced when the results of the simplified translation of the British&lt;/en_us>
+ * &lt;zh_cn>修正简译英结果时所要替换到的字符串&lt;/zh_cn>
+ * &lt;zh_tw>修正簡譯英結果時所要替換到的字符串&lt;/zh_tw>
  */
 const EN_US_PATCH_REPLACE_TO = `${HTML_TAG_BEGIN__EN_US}\$1${HTML_TAG_END__EN_US}`;
 /**
- * <en_us>regular expression: content to be replaced when modifying the simplified translation results</en_us>
- * <zh_cn>正则表达式：修正简译繁结果时所要替换的内容</zh_cn>
- * <zh_tw>正則表達式：修正簡譯繁結果時所要替換的內容</zh_tw>
+ * &lt;en_us>regular expression: content to be replaced when modifying the simplified translation results&lt;/en_us>
+ * &lt;zh_cn>正则表达式：修正简译繁结果时所要替换的内容&lt;/zh_cn>
+ * &lt;zh_tw>正則表達式：修正簡譯繁結果時所要替換的內容&lt;/zh_tw>
  */
 const ZH_TW_PATCH_REPLACE_FROM = new RegExp(HTML_TAG_BEGIN__ZH_TW.concat(' ([^\n]+) ', HTML_TAG_END__ZH_TW), 'g');
 /**
- * <en_us>The string to be replaced when the simplified translation result</en_us>
- * <zh_cn>修正简译繁结果时所要替换到的字符串</zh_cn>
- * <zh_tw>修正簡譯繁結果時所要替換到的字符串</zh_tw>
+ * &lt;en_us>The string to be replaced when the simplified translation result&lt;/en_us>
+ * &lt;zh_cn>修正简译繁结果时所要替换到的字符串&lt;/zh_cn>
+ * &lt;zh_tw>修正簡譯繁結果時所要替換到的字符串&lt;/zh_tw>
  */
 const ZH_TW_PATCH_REPLACE_TO = `${HTML_TAG_BEGIN__ZH_TW}\$1${HTML_TAG_END__ZH_TW}`;
 /**
- * <en_us>regular expression: all I18N language HTML starts and end the label</en_us>
- * <zh_cn>正则表达式：所有i18n语言html开始与结束标签</zh_cn>
- * <zh_tw>正則表達式：所有i18n語言html開始與結束標籤</zh_tw>
+ * &lt;en_us>regular expression: all I18N language HTML starts and end the label&lt;/en_us>
+ * &lt;zh_cn>正则表达式：所有i18n语言html开始与结束标签&lt;/zh_cn>
+ * &lt;zh_tw>正則表達式：所有i18n語言html開始與結束標籤&lt;/zh_tw>
  */
-const HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN = /((\<|\<\/)(en_us|zh_cn|zh_tw)\>)/g;
+const HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN = /((\&lt;|\&lt;\/)(en_us|zh_cn|zh_tw)\>)/g;
 /**
- * <en_us>the core method of split annotation</en_us>
- * <zh_cn>拆分注释的核心方法</zh_cn>
- * <zh_tw>拆分註釋的核心方法</zh_tw>
+ * &lt;en_us>the core method of split annotation&lt;/en_us>
+ * &lt;zh_cn>拆分注释的核心方法&lt;/zh_cn>
+ * &lt;zh_tw>拆分註釋的核心方法&lt;/zh_tw>
  *
- * @param {WebDriver} driver <en_us>Browser driver</en_us><zh_cn>浏览器驱动程序</zh_cn><zh_tw>瀏覽器驅動程序</zh_tw>
- * @param {string} sourceFilename <en_us>The file name of the annotation to be split</en_us><zh_cn>所要拆分注释的文件名</zh_cn><zh_tw>所要拆分註釋的文件名</zh_tw>
- * @param {string} commentFilesPath <en_us>Storage path after splitting</en_us><zh_cn>拆分后结果存放路径</zh_cn><zh_tw>拆分後結果存放路徑</zh_tw>
+ * @param {WebDriver} driver &lt;en_us>Browser driver&lt;/en_us>&lt;zh_cn>浏览器驱动程序&lt;/zh_cn>&lt;zh_tw>瀏覽器驅動程序&lt;/zh_tw>
+ * @param {string} sourceFilename &lt;en_us>The file name of the annotation to be split&lt;/en_us>&lt;zh_cn>所要拆分注释的文件名&lt;/zh_cn>&lt;zh_tw>所要拆分註釋的文件名&lt;/zh_tw>
+ * @param {string} commentFilesPath &lt;en_us>Storage path after splitting&lt;/en_us>&lt;zh_cn>拆分后结果存放路径&lt;/zh_cn>&lt;zh_tw>拆分後結果存放路徑&lt;/zh_tw>
  */
 async function splitCommentCore(driver, sourceFilename, commentFilesPath) {
     const fileInfo = statSync(sourceFilename);
@@ -110,7 +138,7 @@ async function splitCommentCore(driver, sourceFilename, commentFilesPath) {
         [I18N_LANG_NAME.zh_cn, CN_COMMENTS],
         [I18N_LANG_NAME.zh_tw, TW_COMMENTS],
     ];
-    for (let index = 0; index < 3; ++index) {
+    for (let index = 0; index &lt; 3; ++index) {
         const langAndData = DATA[index];
         // DATA.forEach((langAndData, index) => {
         const LANG = langAndData[0];
@@ -158,13 +186,13 @@ async function splitCommentCore(driver, sourceFilename, commentFilesPath) {
     }
 }
 /**
- * <en_us>the core method of split annotation</en_us>
- * <zh_cn>拆分注释的核心方法</zh_cn>
- * <zh_tw>拆分註釋的核心方法</zh_tw>
+ * &lt;en_us>the core method of split annotation&lt;/en_us>
+ * &lt;zh_cn>拆分注释的核心方法&lt;/zh_cn>
+ * &lt;zh_tw>拆分註釋的核心方法&lt;/zh_tw>
  *
- * @param {string} sourceFilename <en_us>The file name of the annotation to be split</en_us><zh_cn>所要拆分注释的文件名</zh_cn><zh_tw>所要拆分註釋的文件名</zh_tw>
- * @param {string} commentFilesPath <en_us>Disassembling result folder</en_us><zh_cn>拆分结果文件夹</zh_cn><zh_tw>拆分結果文件夾</zh_tw>
- * @returns {Promise<boolean>} <en_us>Whether the split is successful</en_us><zh_cn>是否拆分成功</zh_cn><zh_tw>是否拆分成功</zh_tw>
+ * @param {string} sourceFilename &lt;en_us>The file name of the annotation to be split&lt;/en_us>&lt;zh_cn>所要拆分注释的文件名&lt;/zh_cn>&lt;zh_tw>所要拆分註釋的文件名&lt;/zh_tw>
+ * @param {string} commentFilesPath &lt;en_us>Disassembling result folder&lt;/en_us>&lt;zh_cn>拆分结果文件夹&lt;/zh_cn>&lt;zh_tw>拆分結果文件夾&lt;/zh_tw>
+ * @returns {Promise&lt;boolean>} &lt;en_us>Whether the split is successful&lt;/en_us>&lt;zh_cn>是否拆分成功&lt;/zh_cn>&lt;zh_tw>是否拆分成功&lt;/zh_tw>
  */
 export async function splitComments(sourceFilename, commentFilesPath) {
     const driver = await SeleniumHelper.getSingletonHeadlessChromeDriver();
@@ -181,30 +209,30 @@ export async function splitComments(sourceFilename, commentFilesPath) {
     }
 }
 /**
- * <en_us>Get the annotation entry according to the split result folder and language</en_us>
- * <zh_cn>根据拆分结果文件夹与语言获取其中的注释条目</zh_cn>
- * <zh_tw>根據拆分結果文件夾與語言獲取其中的註釋條目</zh_tw>
+ * &lt;en_us>Get the annotation entry according to the split result folder and language&lt;/en_us>
+ * &lt;zh_cn>根据拆分结果文件夹与语言获取其中的注释条目&lt;/zh_cn>
+ * &lt;zh_tw>根據拆分結果文件夾與語言獲取其中的註釋條目&lt;/zh_tw>
  *
- * @param {string} dir <en_us>Disassembling result folder</en_us><zh_cn>拆分结果文件夹</zh_cn><zh_tw>拆分結果文件夾</zh_tw>
- * @param {string} lang <en_us>Language</en_us><zh_cn>语言</zh_cn><zh_tw>語言</zh_tw>
- * @returns {string[]} <en_us>arrays: entry of the corresponding language</en_us><zh_cn>数组：相应语言的条目</zh_cn><zh_tw>數組：相應語言的條目</zh_tw>
+ * @param {string} dir &lt;en_us>Disassembling result folder&lt;/en_us>&lt;zh_cn>拆分结果文件夹&lt;/zh_cn>&lt;zh_tw>拆分結果文件夾&lt;/zh_tw>
+ * @param {string} lang &lt;en_us>Language&lt;/en_us>&lt;zh_cn>语言&lt;/zh_cn>&lt;zh_tw>語言&lt;/zh_tw>
+ * @returns {string[]} &lt;en_us>arrays: entry of the corresponding language&lt;/en_us>&lt;zh_cn>数组：相应语言的条目&lt;/zh_cn>&lt;zh_tw>數組：相應語言的條目&lt;/zh_tw>
  */
 function getSplitResultFromGoalFileByLang(dir, lang) {
     const ARRAY = readTextFileSync(joinPath(dir, `${lang}.txt`))
-        .substring(I18N_HTML_BEGIN_TAG_LENGTH).replace(new RegExp(`</${lang}>[\r\n]+<${lang}>`, 'g'), SEPARATOR_OF_SPLIT)
+        .substring(I18N_HTML_BEGIN_TAG_LENGTH).replace(new RegExp(`&lt;/${lang}>[\r\n]+&lt;${lang}>`, 'g'), SEPARATOR_OF_SPLIT)
         .split(SEPARATOR_OF_SPLIT);
     const MAX_INDEX = ARRAY.length - 1;
-    ARRAY[MAX_INDEX] = ARRAY[MAX_INDEX].replace(`</${lang}>`, '');
+    ARRAY[MAX_INDEX] = ARRAY[MAX_INDEX].replace(`&lt;/${lang}>`, '');
     return ARRAY;
 }
 /**
- * <en_us>merger notes</en_us>
- * <zh_cn>合并注释</zh_cn>
- * <zh_tw>合併註釋</zh_tw>
+ * &lt;en_us>merger notes&lt;/en_us>
+ * &lt;zh_cn>合并注释&lt;/zh_cn>
+ * &lt;zh_tw>合併註釋&lt;/zh_tw>
  *
- * @param {string} sourceFilename <en_us>The file name to be combined to be combined</en_us><zh_cn>要合并注释的文件名</zh_cn><zh_tw>要合併註釋的文件名</zh_tw>
- * @param {string} commentFilesPath <en_us>Disassembling result folder</en_us><zh_cn>拆分结果文件夹</zh_cn><zh_tw>拆分結果文件夾</zh_tw>
- * @returns {boolean} <en_us>Whether successful merger</en_us><zh_cn>是否成功合并</zh_cn><zh_tw>是否成功合併</zh_tw>
+ * @param {string} sourceFilename &lt;en_us>The file name to be combined to be combined&lt;/en_us>&lt;zh_cn>要合并注释的文件名&lt;/zh_cn>&lt;zh_tw>要合併註釋的文件名&lt;/zh_tw>
+ * @param {string} commentFilesPath &lt;en_us>Disassembling result folder&lt;/en_us>&lt;zh_cn>拆分结果文件夹&lt;/zh_cn>&lt;zh_tw>拆分結果文件夾&lt;/zh_tw>
+ * @returns {boolean} &lt;en_us>Whether successful merger&lt;/en_us>&lt;zh_cn>是否成功合并&lt;/zh_cn>&lt;zh_tw>是否成功合併&lt;/zh_tw>
  */
 export function joinComments(sourceFilename, commentFilesPath) {
     try {
@@ -224,7 +252,7 @@ export function joinComments(sourceFilename, commentFilesPath) {
             .split(SEPARATOR_OF_SPLIT);
         const COUNT = US_COMMENTS.length;
         // console.log(CN_COMMENTS.length, TW_COMMENTS.length, COUNT);
-        assert(COUNT === CN_COMMENTS.length && COUNT === TW_COMMENTS.length);
+        assert(COUNT === CN_COMMENTS.length &amp;&amp; COUNT === TW_COMMENTS.length);
         // console.log(
         // 	'SOURCE_CONTENT\n',
         // 	SOURCE_CONTENT,
@@ -245,7 +273,7 @@ export function joinComments(sourceFilename, commentFilesPath) {
         // 	COUNT,
         // 	'\n',
         // );
-        for (let i = 0; i < COUNT; ++i) {
+        for (let i = 0; i &lt; COUNT; ++i) {
             const OFFSET = 6 * i;
             CODES_ARRAY[OFFSET + 1] = `${HTML_TAG_BEGIN__EN_US}${US_COMMENTS[i]}${HTML_TAG_END__EN_US}`;
             CODES_ARRAY[OFFSET + 3] = `${HTML_TAG_BEGIN__ZH_CN}${CN_COMMENTS[i]}${HTML_TAG_END__ZH_CN}`;
@@ -268,12 +296,12 @@ export function joinComments(sourceFilename, commentFilesPath) {
     }
 }
 /**
- * <en_us>the core method of translation Chinese to three -character</en_us>
- * <zh_cn>翻译中文到三语的核心方法</zh_cn>
- * <zh_tw>翻譯中文到三語的核心方法</zh_tw>
+ * &lt;en_us>the core method of translation Chinese to three -character&lt;/en_us>
+ * &lt;zh_cn>翻译中文到三语的核心方法&lt;/zh_cn>
+ * &lt;zh_tw>翻譯中文到三語的核心方法&lt;/zh_tw>
  *
- * @param {WebDriver} driver <en_us>Browser driver</en_us><zh_cn>浏览器驱动程序</zh_cn><zh_tw>瀏覽器驅動程序</zh_tw>
- * @param {string} sourceFilenames <en_us>to translate Chinese to three -character file name</en_us><zh_cn>要翻译中文到三语的文件名</zh_cn><zh_tw>要翻譯中文到三語的文件名</zh_tw>
+ * @param {WebDriver} driver &lt;en_us>Browser driver&lt;/en_us>&lt;zh_cn>浏览器驱动程序&lt;/zh_cn>&lt;zh_tw>瀏覽器驅動程序&lt;/zh_tw>
+ * @param {string} sourceFilenames &lt;en_us>to translate Chinese to three -character file name&lt;/en_us>&lt;zh_cn>要翻译中文到三语的文件名&lt;/zh_cn>&lt;zh_tw>要翻譯中文到三語的文件名&lt;/zh_tw>
  */
 async function cn2trilingualCore(driver, sourceFilename) {
     const SEG_COUNT_PER_ITEM = 6;
@@ -292,7 +320,7 @@ async function cn2trilingualCore(driver, sourceFilename) {
         .replace(HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN, SEPARATOR_OF_SPLIT)
         .split(SEPARATOR_OF_SPLIT);
     const LAST_ITEM_START_INDEX = CODES_ARRAY.length - SEG_COUNT_PER_ITEM;
-    for (let i = 0; i < LAST_ITEM_START_INDEX; i += SEG_COUNT_PER_ITEM) {
+    for (let i = 0; i &lt; LAST_ITEM_START_INDEX; i += SEG_COUNT_PER_ITEM) {
         // US_COMMENTS.push(`${HTML_TAG_BEGIN__EN_US}${CODES_ARRAY[i + 1]}${HTML_TAG_END__EN_US}`);
         CN_COMMENTS.push(`${HTML_TAG_BEGIN__ZH_CN}${CODES_ARRAY[i + 3]}${HTML_TAG_END__ZH_CN}`);
         // TW_COMMENTS.push(`${HTML_TAG_BEGIN__ZH_TW}${CODES_ARRAY[i + 5]}${HTML_TAG_END__ZH_TW}`);
@@ -328,7 +356,7 @@ async function cn2trilingualCore(driver, sourceFilename) {
     // console.log('US_COMMENTS.length', US_COMMENTS.length);
     // console.log('TW_COMMENTS.length', TW_COMMENTS.length);
     const COUNT = US_COMMENTS.length;
-    for (let i = 0; i < COUNT; ++i) {
+    for (let i = 0; i &lt; COUNT; ++i) {
         const OFFSET = SEG_COUNT_PER_ITEM * i;
         CODES_ARRAY[OFFSET + 1] = `${HTML_TAG_BEGIN__EN_US}${US_COMMENTS[i]}${HTML_TAG_END__EN_US}`;
         // CODES_ARRAY[OFFSET + 3] = `${HTML_TAG_BEGIN__ZH_CN}${CN_COMMENTS[i]}${HTML_TAG_END__ZH_CN}`;
@@ -338,17 +366,17 @@ async function cn2trilingualCore(driver, sourceFilename) {
     writeTextFileSync(sourceFilename, CODES_ARRAY.join(''));
 }
 /**
- * <en_us>Translate multiple files in Chinese label to trimina</en_us>
- * <zh_cn>翻译多个文件中文标签内容到三语</zh_cn>
- * <zh_tw>翻譯多個文件中文標籤內容到三語</zh_tw>
+ * &lt;en_us>Translate multiple files in Chinese label to trimina&lt;/en_us>
+ * &lt;zh_cn>翻译多个文件中文标签内容到三语&lt;/zh_cn>
+ * &lt;zh_tw>翻譯多個文件中文標籤內容到三語&lt;/zh_tw>
  *
- * @param {string[]} sourceFilenames <en_us>array: The file name of Chinese to three -character files</en_us><zh_cn>数组：要翻译中文到三语的文件名</zh_cn><zh_tw>數組：要翻譯中文到三語的文件名</zh_tw>
- * @returns {Promise<boolean>} <en_us>asynchronous results: whether to successfully translate all files</en_us><zh_cn>异步结果：是否成功翻译所有文件</zh_cn><zh_tw>異步結果：是否成功翻譯所有文件</zh_tw>
+ * @param {string[]} sourceFilenames &lt;en_us>array: The file name of Chinese to three -character files&lt;/en_us>&lt;zh_cn>数组：要翻译中文到三语的文件名&lt;/zh_cn>&lt;zh_tw>數組：要翻譯中文到三語的文件名&lt;/zh_tw>
+ * @returns {Promise&lt;boolean>} &lt;en_us>asynchronous results: whether to successfully translate all files&lt;/en_us>&lt;zh_cn>异步结果：是否成功翻译所有文件&lt;/zh_cn>&lt;zh_tw>異步結果：是否成功翻譯所有文件&lt;/zh_tw>
  */
 export async function cn2trilingual(sourceFilenames) {
     const driver = await SeleniumHelper.getSingletonHeadlessChromeDriver();
     const COUNT = sourceFilenames.length;
-    for (let i = 0; i < COUNT; ++i) {
+    for (let i = 0; i &lt; COUNT; ++i) {
         const SOURCE_FILENAME = sourceFilenames[i];
         try {
             await cn2trilingualCore(driver, SOURCE_FILENAME);
@@ -362,40 +390,40 @@ export async function cn2trilingual(sourceFilenames) {
     return true;
 }
 /**
- * <en_us>HTML label segment that removes the specified language</en_us>
- * <zh_cn>移除指定语言的html标签段</zh_cn>
- * <zh_tw>移除指定語言的html標籤段</zh_tw>
+ * &lt;en_us>HTML label segment that removes the specified language&lt;/en_us>
+ * &lt;zh_cn>移除指定语言的html标签段&lt;/zh_cn>
+ * &lt;zh_tw>移除指定語言的html標籤段&lt;/zh_tw>
  *
- * @param {string} source <en_us>original content</en_us><zh_cn>原始内容</zh_cn><zh_tw>原始內容</zh_tw>
- * @param {string} lang <en_us>international language name</en_us><zh_cn>国际化语言名</zh_cn><zh_tw>國際化語言名</zh_tw>
- * @returns {string} <en_us>The results after removing the corresponding language HTML label</en_us><zh_cn>移除相应语言html标签后的结果</zh_cn><zh_tw>移除相應語言html標籤後的結果</zh_tw>
+ * @param {string} source &lt;en_us>original content&lt;/en_us>&lt;zh_cn>原始内容&lt;/zh_cn>&lt;zh_tw>原始內容&lt;/zh_tw>
+ * @param {string} lang &lt;en_us>international language name&lt;/en_us>&lt;zh_cn>国际化语言名&lt;/zh_cn>&lt;zh_tw>國際化語言名&lt;/zh_tw>
+ * @returns {string} &lt;en_us>The results after removing the corresponding language HTML label&lt;/en_us>&lt;zh_cn>移除相应语言html标签后的结果&lt;/zh_cn>&lt;zh_tw>移除相應語言html標籤後的結果&lt;/zh_tw>
  */
 function removeLangSeg(source, lang) {
-    // console.log(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))<${lang}>`);
+    // console.log(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))&lt;${lang}>`);
     /*
-        /[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<en_us\>/g
-        /[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<zh_cn\>/g
-        /[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))<zh_tw\>/g
+        /[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))&lt;en_us\>/g
+        /[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))&lt;zh_cn\>/g
+        /[\r\n]+(([\#]+[\ \t]+)|([\ \t]*\/\/[\ \t]*)|([\ \t]*\*[\ \t]*))&lt;zh_tw\>/g
     */
     // return source
-    // .replace(new RegExp(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))<${lang}>`, 'g'), `<${lang}>`)
-    // .replace(new RegExp(`</${lang}>`, 'g'), '\0'.concat(`</${lang}>`))
-    // .replace(new RegExp(`<${lang}[^\0]+\0<\/${lang}>`, 'g'), '')
+    // .replace(new RegExp(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))&lt;${lang}>`, 'g'), `&lt;${lang}>`)
+    // .replace(new RegExp(`&lt;/${lang}>`, 'g'), '\0'.concat(`&lt;/${lang}>`))
+    // .replace(new RegExp(`&lt;${lang}[^\0]+\0&lt;\/${lang}>`, 'g'), '')
     // ;
     return source
-        .replace(new RegExp(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))<${lang}>`, 'g'), `<${lang}>`)
-        .replace(new RegExp(`</${lang}>`, 'g'), '\0'.concat(`</${lang}>`))
-        .replace(new RegExp(`<${lang}[^\0]+\0<\/${lang}>`, 'g'), '');
+        .replace(new RegExp(`[\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*))&lt;${lang}>`, 'g'), `&lt;${lang}>`)
+        .replace(new RegExp(`&lt;/${lang}>`, 'g'), '\0'.concat(`&lt;/${lang}>`))
+        .replace(new RegExp(`&lt;${lang}[^\0]+\0&lt;\/${lang}>`, 'g'), '');
 }
 /**
- * <en_us>The HTML label segment that removes other languages can remove the HTML tag itself (retaining text content) of the designated language at the same time (retaining text content)</en_us>
- * <zh_cn>移除其它语言的html标签段，可同时移除所指定语言的html标签本身（保留文本内容）</zh_cn>
- * <zh_tw>移除其它語言的html標籤段，可同時移除所指定語言的html標籤本身（保留文本內容）</zh_tw>
+ * &lt;en_us>The HTML label segment that removes other languages can remove the HTML tag itself (retaining text content) of the designated language at the same time (retaining text content)&lt;/en_us>
+ * &lt;zh_cn>移除其它语言的html标签段，可同时移除所指定语言的html标签本身（保留文本内容）&lt;/zh_cn>
+ * &lt;zh_tw>移除其它語言的html標籤段，可同時移除所指定語言的html標籤本身（保留文本內容）&lt;/zh_tw>
  *
- * @param {string} source <en_us>original content</en_us><zh_cn>原始内容</zh_cn><zh_tw>原始內容</zh_tw>
- * @param {string} lang <en_us>international language name</en_us><zh_cn>国际化语言名</zh_cn><zh_tw>國際化語言名</zh_tw>
- * @param {boolean} keepLangTag <en_us>Whether the split result retains the language html label</en_us><zh_cn>拆分结果是否保留语言html标签</zh_cn><zh_tw>拆分結果是否保留語言html標籤</zh_tw>
- * @returns {string} <en_us>The results after the HTML label section that removes other languages</en_us><zh_cn>移除其它语言的html标签段后的结果</zh_cn><zh_tw>移除其它語言的html標籤段後的結果</zh_tw>
+ * @param {string} source &lt;en_us>original content&lt;/en_us>&lt;zh_cn>原始内容&lt;/zh_cn>&lt;zh_tw>原始內容&lt;/zh_tw>
+ * @param {string} lang &lt;en_us>international language name&lt;/en_us>&lt;zh_cn>国际化语言名&lt;/zh_cn>&lt;zh_tw>國際化語言名&lt;/zh_tw>
+ * @param {boolean} keepLangTag &lt;en_us>Whether the split result retains the language html label&lt;/en_us>&lt;zh_cn>拆分结果是否保留语言html标签&lt;/zh_cn>&lt;zh_tw>拆分結果是否保留語言html標籤&lt;/zh_tw>
+ * @returns {string} &lt;en_us>The results after the HTML label section that removes other languages&lt;/en_us>&lt;zh_cn>移除其它语言的html标签段后的结果&lt;/zh_cn>&lt;zh_tw>移除其它語言的html標籤段後的結果&lt;/zh_tw>
  */
 function keepByLang(source, lang, keepLangTag) {
     let result = source;
@@ -404,11 +432,11 @@ function keepByLang(source, lang, keepLangTag) {
             break;
         case I18N_LANG_NAME.zh_cn:
             result = result
-                .replace(new RegExp(`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))${HTML_TAG_BEGIN__EN_US}[^\r\n]+${HTML_TAG_END__EN_US}<${lang}>`, 'g'), `$1<${lang}>`);
+                .replace(new RegExp(`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))${HTML_TAG_BEGIN__EN_US}[^\r\n]+${HTML_TAG_END__EN_US}&lt;${lang}>`, 'g'), `$1&lt;${lang}>`);
             break;
         case I18N_LANG_NAME.zh_tw:
             result = result
-                .replace(new RegExp(`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))${HTML_TAG_BEGIN__EN_US}[^\r\n]+${HTML_TAG_END__EN_US}${HTML_TAG_BEGIN__ZH_CN}[^\r\n]+${HTML_TAG_END__ZH_CN}<${lang}>`, 'g'), `$1<${lang}>`);
+                .replace(new RegExp(`([\\r\\n]+(([\\#]+[\\ \\t]+)|([\\ \\t]*\\/\\/[\\ \\t]*)|([\\ \\t]*\\*[\\ \\t]*)))${HTML_TAG_BEGIN__EN_US}[^\r\n]+${HTML_TAG_END__EN_US}${HTML_TAG_BEGIN__ZH_CN}[^\r\n]+${HTML_TAG_END__ZH_CN}&lt;${lang}>`, 'g'), `$1&lt;${lang}>`);
             break;
         default:
             break;
@@ -417,22 +445,22 @@ function keepByLang(source, lang, keepLangTag) {
         result = removeLangSeg(result, removeLang);
     });
     if (!keepLangTag) {
-        result = result.replace(new RegExp(`(<|</)${lang}>`, 'g'), '');
+        result = result.replace(new RegExp(`(&lt;|&lt;/)${lang}>`, 'g'), '');
     }
     return result;
 }
 /**
- * <en_us>Several readme.md files (one new file in each international language)</en_us>
- * <zh_cn>拆分若干README.md文件（每种国际化语言一个新文件）</zh_cn>
- * <zh_tw>拆分若干README.md文件（每種國際化語言一個新文件）</zh_tw>
+ * &lt;en_us>Several readme.md files (one new file in each international language)&lt;/en_us>
+ * &lt;zh_cn>拆分若干README.md文件（每种国际化语言一个新文件）&lt;/zh_cn>
+ * &lt;zh_tw>拆分若干README.md文件（每種國際化語言一個新文件）&lt;/zh_tw>
  *
- * @param {boolean} keepLangTag <en_us>Whether the split result retains the language html label</en_us><zh_cn>拆分结果是否保留语言html标签</zh_cn><zh_tw>拆分結果是否保留語言html標籤</zh_tw>
- * @param {string[]} sourceFilenames <en_us>array: Reademe.md file name to be split</en_us><zh_cn>数组：要拆分的READEME.md文件名</zh_cn><zh_tw>數組：要拆分的READEME.md文件名</zh_tw>
- * @returns {boolean} <en_us>Whether to successfully split Reademe.md file</en_us><zh_cn>是否成功拆分READEME.md文件</zh_cn><zh_tw>是否成功拆分READEME.md文件</zh_tw>
+ * @param {boolean} keepLangTag &lt;en_us>Whether the split result retains the language html label&lt;/en_us>&lt;zh_cn>拆分结果是否保留语言html标签&lt;/zh_cn>&lt;zh_tw>拆分結果是否保留語言html標籤&lt;/zh_tw>
+ * @param {string[]} sourceFilenames &lt;en_us>array: Reademe.md file name to be split&lt;/en_us>&lt;zh_cn>数组：要拆分的READEME.md文件名&lt;/zh_cn>&lt;zh_tw>數組：要拆分的READEME.md文件名&lt;/zh_tw>
+ * @returns {boolean} &lt;en_us>Whether to successfully split Reademe.md file&lt;/en_us>&lt;zh_cn>是否成功拆分READEME.md文件&lt;/zh_cn>&lt;zh_tw>是否成功拆分READEME.md文件&lt;/zh_tw>
  */
 export function splitReadmeFiles(keepLangTag, sourceFilenames) {
     const COUNT = sourceFilenames.length;
-    for (let i = 0; i < COUNT; ++i) {
+    for (let i = 0; i &lt; COUNT; ++i) {
         const SOURCE_FILENAME = sourceFilenames[i];
         try {
             if (SOURCE_FILENAME.toLowerCase().lastIndexOf('readme.md') === -1) {
@@ -459,17 +487,17 @@ export function splitReadmeFiles(keepLangTag, sourceFilenames) {
     return true;
 }
 /**
- * <en_us>Several files are split, a I18N folder will be automatically established, and a sub -folder will be established for each international language. The split result corresponds to</en_us>
- * <zh_cn>拆分若干文件，会自动建立一个i18n文件夹，并针对每一种国际化语言建立一个子文件夹，将拆分结果对应放入</zh_cn>
- * <zh_tw>拆分若干文件，會自動建立一個i18n文件夾，並針對每一種國際化語言建立一個子文件夾，將拆分結果對應放入</zh_tw>
+ * &lt;en_us>Several files are split, a I18N folder will be automatically established, and a sub -folder will be established for each international language. The split result corresponds to&lt;/en_us>
+ * &lt;zh_cn>拆分若干文件，会自动建立一个i18n文件夹，并针对每一种国际化语言建立一个子文件夹，将拆分结果对应放入&lt;/zh_cn>
+ * &lt;zh_tw>拆分若干文件，會自動建立一個i18n文件夾，並針對每一種國際化語言建立一個子文件夾，將拆分結果對應放入&lt;/zh_tw>
  *
- * @param {boolean} keepLangTag <en_us>Whether the split result retains the language html label</en_us><zh_cn>拆分结果是否保留语言html标签</zh_cn><zh_tw>拆分結果是否保留語言html標籤</zh_tw>
- * @param {string[]} sourceFilenames <en_us>array: file name to be split</en_us><zh_cn>数组：要拆分的文件名</zh_cn><zh_tw>數組：要拆分的文件名</zh_tw>
- * @returns {boolean} <en_us>Whether to successfully split all files</en_us><zh_cn>是否成功拆分所有文件</zh_cn><zh_tw>是否成功拆分所有文件</zh_tw>
+ * @param {boolean} keepLangTag &lt;en_us>Whether the split result retains the language html label&lt;/en_us>&lt;zh_cn>拆分结果是否保留语言html标签&lt;/zh_cn>&lt;zh_tw>拆分結果是否保留語言html標籤&lt;/zh_tw>
+ * @param {string[]} sourceFilenames &lt;en_us>array: file name to be split&lt;/en_us>&lt;zh_cn>数组：要拆分的文件名&lt;/zh_cn>&lt;zh_tw>數組：要拆分的文件名&lt;/zh_tw>
+ * @returns {boolean} &lt;en_us>Whether to successfully split all files&lt;/en_us>&lt;zh_cn>是否成功拆分所有文件&lt;/zh_cn>&lt;zh_tw>是否成功拆分所有文件&lt;/zh_tw>
  */
 export function splitFiles(keepLangTag, sourceFilenames) {
     const COUNT = sourceFilenames.length;
-    for (let i = 0; i < COUNT; ++i) {
+    for (let i = 0; i &lt; COUNT; ++i) {
         const SOURCE_FILENAME = sourceFilenames[i];
         try {
             const SOURCE_FILENAME_SPLIT_RESULT = SOURCE_FILENAME.split(SEP);
@@ -495,7 +523,7 @@ export function splitFiles(keepLangTag, sourceFilenames) {
                     mkdirSync(PATH, { recursive: true });
                     writeTextFileSync(joinPath(PATH, FILENAME), keepLangTag
                         ? content
-                        : content.replaceAll(`<${lang}>`, '').replaceAll(`</${lang}>`, ''));
+                        : content.replaceAll(`&lt;${lang}>`, '').replaceAll(`&lt;/${lang}>`, ''));
                 });
             };
             switch (FILENAME.split('.').pop()?.toLowerCase()) {
@@ -540,9 +568,9 @@ export function splitFiles(keepLangTag, sourceFilenames) {
     return true;
 }
 /**
- * <en_us>entrance: display help or version, or perform different tasks according to the parameters</en_us>
- * <zh_cn>入口：显示帮助或版本，或根据参数执行不同任务</zh_cn>
- * <zh_tw>入口：顯示幫助或版本，或根據參數執行不同任務</zh_tw>
+ * &lt;en_us>entrance: display help or version, or perform different tasks according to the parameters&lt;/en_us>
+ * &lt;zh_cn>入口：显示帮助或版本，或根据参数执行不同任务&lt;/zh_cn>
+ * &lt;zh_tw>入口：顯示幫助或版本，或根據參數執行不同任務&lt;/zh_tw>
  */
 showHelpOrVersionOrCallbackAndShowUsedTime({
     en_us: 'This tool is used to assist in internationalization operations of code or README.md and other files, such as splitting, merging, and translating.',
@@ -574,17 +602,17 @@ showHelpOrVersionOrCallbackAndShowUsedTime({
     }
 });
 /**
- * <en_us>Translate multiple files in Chinese label to trimina</en_us>
- * <zh_cn>翻译多个文本文件中文标签内容到三语</zh_cn>
- * <zh_tw>翻譯多個文件中文標籤內容到三語</zh_tw>
+ * &lt;en_us>Translate multiple files in Chinese label to trimina&lt;/en_us>
+ * &lt;zh_cn>翻译多个文本文件中文标签内容到三语&lt;/zh_cn>
+ * &lt;zh_tw>翻譯多個文件中文標籤內容到三語&lt;/zh_tw>
  *
- * @param {string[]} sourceFilenames <en_us>array: The file name of Chinese to three -character files</en_us><zh_cn>数组：要翻译中文到三语的文件名</zh_cn><zh_tw>數組：要翻譯中文到三語的文件名</zh_tw>
- * @returns {Promise<boolean>} <en_us>asynchronous results: whether to successfully translate all files</en_us><zh_cn>异步结果：是否成功翻译所有文件</zh_cn><zh_tw>異步結果：是否成功翻譯所有文件</zh_tw>
+ * @param {string[]} sourceFilenames &lt;en_us>array: The file name of Chinese to three -character files&lt;/en_us>&lt;zh_cn>数组：要翻译中文到三语的文件名&lt;/zh_cn>&lt;zh_tw>數組：要翻譯中文到三語的文件名&lt;/zh_tw>
+ * @returns {Promise&lt;boolean>} &lt;en_us>asynchronous results: whether to successfully translate all files&lt;/en_us>&lt;zh_cn>异步结果：是否成功翻译所有文件&lt;/zh_cn>&lt;zh_tw>異步結果：是否成功翻譯所有文件&lt;/zh_tw>
  */
 export async function txtCn2trilingual(sourceFilenames) {
     const driver = await SeleniumHelper.getSingletonHeadlessChromeDriver();
     const COUNT = sourceFilenames.length;
-    for (let i = 0; i < COUNT; ++i) {
+    for (let i = 0; i &lt; COUNT; ++i) {
         const SOURCE_FILENAME = sourceFilenames[i];
         try {
             await txtCn2trilingualCore(driver, SOURCE_FILENAME);
@@ -598,12 +626,12 @@ export async function txtCn2trilingual(sourceFilenames) {
     return true;
 }
 /**
- * <en_us>the core method of translation Chinese to three -character</en_us>
- * <zh_cn>翻译文本文件之中文到三语的核心方法</zh_cn>
- * <zh_tw>翻譯中文到三語的核心方法</zh_tw>
+ * &lt;en_us>the core method of translation Chinese to three -character&lt;/en_us>
+ * &lt;zh_cn>翻译文本文件之中文到三语的核心方法&lt;/zh_cn>
+ * &lt;zh_tw>翻譯中文到三語的核心方法&lt;/zh_tw>
  *
- * @param {WebDriver} driver <en_us>Browser driver</en_us><zh_cn>浏览器驱动程序</zh_cn><zh_tw>瀏覽器驅動程序</zh_tw>
- * @param {string} sourceFilenames <en_us>to translate Chinese to three -character file name</en_us><zh_cn>要翻译中文到三语的文件名</zh_cn><zh_tw>要翻譯中文到三語的文件名</zh_tw>
+ * @param {WebDriver} driver &lt;en_us>Browser driver&lt;/en_us>&lt;zh_cn>浏览器驱动程序&lt;/zh_cn>&lt;zh_tw>瀏覽器驅動程序&lt;/zh_tw>
+ * @param {string} sourceFilenames &lt;en_us>to translate Chinese to three -character file name&lt;/en_us>&lt;zh_cn>要翻译中文到三语的文件名&lt;/zh_cn>&lt;zh_tw>要翻譯中文到三語的文件名&lt;/zh_tw>
  */
 async function txtCn2trilingualCore(driver, sourceFilename) {
     // console.log('sourceFilename', sourceFilename);
@@ -634,3 +662,26 @@ async function txtCn2trilingualCore(driver, sourceFilename) {
         writeTextFileSync(ZH_TW_FILENAME, TW_FULL_CONTENT);
     }
 }
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#EN_US_PATCH_REPLACE_FROM">EN_US_PATCH_REPLACE_FROM</a></li><li><a href="global.html#EN_US_PATCH_REPLACE_TO">EN_US_PATCH_REPLACE_TO</a></li><li><a href="global.html#HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN">HTML_TAG_BEGIN_OR_END_I18N_ANY_PATTERN</a></li><li><a href="global.html#ZH_TW_PATCH_REPLACE_FROM">ZH_TW_PATCH_REPLACE_FROM</a></li><li><a href="global.html#ZH_TW_PATCH_REPLACE_TO">ZH_TW_PATCH_REPLACE_TO</a></li><li><a href="global.html#cn2trilingual">cn2trilingual</a></li><li><a href="global.html#cn2trilingualCore">cn2trilingualCore</a></li><li><a href="global.html#getSplitResultFromGoalFileByLang">getSplitResultFromGoalFileByLang</a></li><li><a href="global.html#joinComments">joinComments</a></li><li><a href="global.html#keepByLang">keepByLang</a></li><li><a href="global.html#removeLangSeg">removeLangSeg</a></li><li><a href="global.html#splitCommentCore">splitCommentCore</a></li><li><a href="global.html#splitComments">splitComments</a></li><li><a href="global.html#splitFiles">splitFiles</a></li><li><a href="global.html#splitReadmeFiles">splitReadmeFiles</a></li><li><a href="global.html#txtCn2trilingual">txtCn2trilingual</a></li><li><a href="global.html#txtCn2trilingualCore">txtCn2trilingualCore</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Thu Jan 18 2024 16:30:14 GMT+0800 (China Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
